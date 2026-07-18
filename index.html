@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Absensi Digital — SMPN 2 Muara Bungo</title>
 <link rel="manifest" id="manifestLink">
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
 <script>
 /*! JsBarcode v3.12.3 | (c) Johan Lindell | MIT license */
@@ -203,15 +205,28 @@ th{color:var(--muted);font-weight:600;font-size:.72rem;text-transform:uppercase;
 <div class="toast" id="toast"></div>
 
 <script>
-/* ---------- DATA LAYER (localStorage — ganti ke Supabase saat sudah siap produksi) ---------- */
-const DB_KEY_SISWA = 'absensi_siswa_v1';
-const DB_KEY_ABSEN = 'absensi_log_v1';
+/* ---------- DATA LAYER (Firebase Firestore — realtime, multi-device) ---------- */
+// Config Firebase project: absensi-siswa-5122d
+const firebaseConfig = {
+  apiKey: "AIzaSyBA4MYB4TlAjZkK6wRlAzuZxgHzPpY6SYA",
+  authDomain: "absensi-siswa-5122d.firebaseapp.com",
+  projectId: "absensi-siswa-5122d",
+  storageBucket: "absensi-siswa-5122d.firebasestorage.app",
+  messagingSenderId: "680443328596",
+  appId: "1:680443328596:web:c9e2a91bf2a6723ecf15c1"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+try{ db.enablePersistence({synchronizeTabs:true}); }catch(e){}
+
 const JAM_MASUK = '07:00';
 
-function loadSiswa(){ return JSON.parse(localStorage.getItem(DB_KEY_SISWA) || '[]'); }
-function saveSiswa(list){ localStorage.setItem(DB_KEY_SISWA, JSON.stringify(list)); }
-function loadAbsen(){ return JSON.parse(localStorage.getItem(DB_KEY_ABSEN) || '[]'); }
-function saveAbsen(list){ localStorage.setItem(DB_KEY_ABSEN, JSON.stringify(list)); }
+let siswaCache = [];
+let absenCache = [];
+let dbReady = false;
+
+function loadSiswa(){ return siswaCache; }
+function loadAbsen(){ return absenCache; }
 function todayStr(){ return new Date().toISOString().slice(0,10); }
 function nowTime(){ return new Date().toTimeString().slice(0,5); }
 
@@ -220,6 +235,23 @@ function toast(msg){
   t.textContent = msg; t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'), 1800);
 }
+
+db.collection('siswa').onSnapshot(snap=>{
+  siswaCache = snap.docs.map(d=>({id:d.id, ...d.data()}));
+  dbReady = true;
+  refreshBadge();
+  refreshKelasSelect();
+  if(!document.getElementById('page-siswa').classList.contains('hide')) renderSiswaTable();
+  if(!document.getElementById('page-rekap').classList.contains('hide')) renderRekap();
+}, err=>{
+  console.error(err);
+  toast('Gagal konek database. Cek firebaseConfig di kode.');
+});
+
+db.collection('absen').where('tanggal','==', todayStr()).onSnapshot(snap=>{
+  absenCache = snap.docs.map(d=>({id:d.id, ...d.data()}));
+  if(!document.getElementById('page-rekap').classList.contains('hide')) renderRekap();
+}, err=>console.error(err));
 
 /* ---------- NAV ---------- */
 document.querySelectorAll('.tab').forEach(btn=>{
@@ -235,44 +267,40 @@ document.querySelectorAll('.tab').forEach(btn=>{
 });
 
 function refreshBadge(){
-  document.getElementById('siswaCountBadge').textContent = loadSiswa().length + ' siswa terdaftar';
+  document.getElementById('siswaCountBadge').textContent = dbReady ? (loadSiswa().length + ' siswa terdaftar') : 'Menghubungkan ke database...';
 }
 
 /* ---------- SISWA CRUD ---------- */
-document.getElementById('btnAddSiswa').addEventListener('click', ()=>{
+document.getElementById('btnAddSiswa').addEventListener('click', async ()=>{
   const nama = document.getElementById('inpNama').value.trim();
   const kelas = document.getElementById('inpKelas').value.trim();
   if(!nama || !kelas){ toast('Lengkapi semua kolom dulu'); return; }
-  const list = loadSiswa();
-  if(list.some(s=>s.nama.toLowerCase()===nama.toLowerCase() && s.kelas.toLowerCase()===kelas.toLowerCase())){
+  if(siswaCache.some(s=>s.nama.toLowerCase()===nama.toLowerCase() && s.kelas.toLowerCase()===kelas.toLowerCase())){
     toast('Siswa dengan nama & kelas ini sudah ada'); return;
   }
-  list.push({nama, kelas});
-  saveSiswa(list);
-  document.getElementById('inpNama').value='';
-  document.getElementById('inpKelas').value='';
-  renderSiswaTable(); refreshBadge();
-  toast('Siswa ditambahkan');
+  try{
+    await db.collection('siswa').add({nama, kelas});
+    document.getElementById('inpNama').value='';
+    document.getElementById('inpKelas').value='';
+    toast('Siswa ditambahkan');
+  }catch(e){ console.error(e); toast('Gagal simpan ke database'); }
 });
 
 function renderSiswaTable(){
-  const full = loadSiswa();
+  const full = siswaCache;
   const q = (document.getElementById('filterSiswa').value||'').toLowerCase();
   const list = full.filter(s=>
     s.nama.toLowerCase().includes(q) || s.kelas.toLowerCase().includes(q));
   const tb = document.getElementById('tblSiswa');
+  if(!dbReady){ tb.innerHTML = '<tr><td colspan="3" class="empty">Menghubungkan ke database...</td></tr>'; return; }
   if(list.length===0){ tb.innerHTML = '<tr><td colspan="3" class="empty">Belum ada data siswa</td></tr>'; return; }
-  tb.innerHTML = list.map(s=>{
-    const idx = full.indexOf(s);
-    return `<tr><td>${s.nama}</td><td>${s.kelas}</td>
-    <td><button class="btn sm outline" onclick="hapusSiswa(${idx})">Hapus</button></td></tr>`;
-  }).join('');
+  tb.innerHTML = list.map(s=>`
+    <tr><td>${s.nama}</td><td>${s.kelas}</td>
+    <td><button class="btn sm outline" onclick="hapusSiswa('${s.id}')">Hapus</button></td></tr>`).join('');
 }
-function hapusSiswa(idx){
-  const list = loadSiswa();
-  list.splice(idx,1);
-  saveSiswa(list);
-  renderSiswaTable(); refreshBadge();
+async function hapusSiswa(id){
+  try{ await db.collection('siswa').doc(id).delete(); }
+  catch(e){ console.error(e); toast('Gagal menghapus'); }
 }
 document.getElementById('filterSiswa').addEventListener('input', renderSiswaTable);
 
@@ -281,23 +309,38 @@ document.getElementById('fileExcel').addEventListener('change', (e)=>{
   const file = e.target.files[0];
   if(!file) return;
   const reader = new FileReader();
-  reader.onload = (evt)=>{
+  reader.onload = async (evt)=>{
     const wb = XLSX.read(evt.target.result, {type:'binary'});
     const sheet = wb.Sheets[wb.SheetNames[0]];
     const rows = XLSX.utils.sheet_to_json(sheet, {defval:''});
-    let list = loadSiswa();
-    let added = 0, skip = 0;
+    const existing = new Set(siswaCache.map(s=>s.nama.toLowerCase()+'|'+s.kelas.toLowerCase()));
+    const toAdd = [];
+    let skip = 0;
     rows.forEach(r=>{
       const nama = String(r.Nama||r.nama||r['Nama Lengkap']||'').trim();
       const kelas = String(r.Kelas||r.kelas||'').trim();
-      if(!nama || !kelas){ skip++; return; }
-      if(list.some(s=>s.nama.toLowerCase()===nama.toLowerCase() && s.kelas.toLowerCase()===kelas.toLowerCase())){ skip++; return; }
-      list.push({nama, kelas});
-      added++;
+      const key = nama.toLowerCase()+'|'+kelas.toLowerCase();
+      if(!nama || !kelas || existing.has(key)){ skip++; return; }
+      existing.add(key);
+      toAdd.push({nama, kelas});
     });
-    saveSiswa(list);
-    renderSiswaTable(); refreshBadge();
-    toast(`${added} siswa ditambahkan, ${skip} dilewati`);
+    if(toAdd.length===0){ toast(`0 siswa ditambahkan, ${skip} dilewati`); e.target.value=''; return; }
+    toast(`Mengunggah ${toAdd.length} siswa...`);
+    try{
+      const CHUNK = 400;
+      for(let i=0; i<toAdd.length; i+=CHUNK){
+        const batch = db.batch();
+        toAdd.slice(i, i+CHUNK).forEach(item=>{
+          batch.set(db.collection('siswa').doc(), item);
+        });
+        await batch.commit();
+      }
+      toast(`${toAdd.length} siswa ditambahkan, ${skip} dilewati`);
+    }catch(err){
+      console.error(err);
+      toast('Gagal upload ke database. Cek koneksi/config Firebase.');
+    }
+    e.target.value = '';
   };
   reader.readAsBinaryString(file);
 });
@@ -375,7 +418,7 @@ document.getElementById('btnStopScan').addEventListener('click', async ()=>{
 });
 
 let lastScanTime = 0;
-function onScanSuccess(decodedText){
+async function onScanSuccess(decodedText){
   const now = Date.now();
   if(now - lastScanTime < 1500) return; // debounce
   lastScanTime = now;
@@ -391,15 +434,14 @@ function onScanSuccess(decodedText){
     return;
   }
 
-  const siswa = loadSiswa().find(s=>s.nama.toLowerCase()===nama.toLowerCase() && s.kelas.toLowerCase()===kelas.toLowerCase());
+  const siswa = siswaCache.find(s=>s.nama.toLowerCase()===nama.toLowerCase() && s.kelas.toLowerCase()===kelas.toLowerCase());
   if(!siswa){
     feed.insertAdjacentHTML('afterbegin', `<div class="scan-row dup"><span>${nama} (${kelas}) — tidak terdaftar di data siswa</span></div>`);
     beep(false);
     return;
   }
 
-  const absen = loadAbsen();
-  const sudah = absen.find(a=>a.nama===siswa.nama && a.kelas===siswa.kelas && a.tanggal===todayStr());
+  const sudah = absenCache.find(a=>a.nama===siswa.nama && a.kelas===siswa.kelas && a.tanggal===todayStr());
   if(sudah){
     feed.insertAdjacentHTML('afterbegin', `<div class="scan-row dup"><span>${siswa.nama} — sudah absen (${sudah.jam})</span></div>`);
     beep(false);
@@ -408,8 +450,18 @@ function onScanSuccess(decodedText){
 
   const jam = nowTime();
   const telat = jam > JAM_MASUK;
-  absen.push({nama:siswa.nama, kelas:siswa.kelas, tanggal:todayStr(), jam, status: telat?'Terlambat':'Hadir'});
-  saveAbsen(absen);
+  const entry = {nama:siswa.nama, kelas:siswa.kelas, tanggal:todayStr(), jam, status: telat?'Terlambat':'Hadir'};
+
+  // tandai lokal dulu (optimistik) supaya device yang sama tidak scan dobel sebelum server merespons
+  absenCache.push(entry);
+  try{
+    await db.collection('absen').add(entry);
+  }catch(e){
+    console.error(e);
+    feed.insertAdjacentHTML('afterbegin', `<div class="scan-row dup"><span>Gagal simpan absen ${siswa.nama} — cek koneksi</span></div>`);
+    beep(false);
+    return;
+  }
 
   feed.insertAdjacentHTML('afterbegin', `
     <div class="scan-row ${telat?'late':'ok'}">
