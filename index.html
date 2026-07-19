@@ -1173,7 +1173,12 @@ async function heartbeatScanner(){
 
 document.getElementById('btnStartScan').addEventListener('click', ()=>{
   html5QrCode = new Html5Qrcode('reader');
-  html5QrCode.start({facingMode:'environment'}, {fps:10, qrbox:220}, onScanSuccess, ()=>{})
+  html5QrCode.start({facingMode:'environment'}, {
+    fps: 20,
+    qrbox: {width: 280, height: 140},
+    formatsToSupport: [ Html5QrcodeSupportedFormats.CODE_128 ],
+    experimentalFeatures: { useBarCodeDetectorIfSupported: true }
+  }, onScanSuccess, ()=>{})
     .then(()=>{
       document.getElementById('btnStartScan').classList.add('hide');
       document.getElementById('btnStopScan').classList.remove('hide');
