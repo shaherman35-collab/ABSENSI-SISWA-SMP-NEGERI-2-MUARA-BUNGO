@@ -297,8 +297,9 @@ th{color:var(--muted);font-weight:700;font-size:.7rem;text-transform:uppercase;l
 
 @media print{
   body *{visibility:hidden;}
-  #printArea, #printArea *{visibility:visible;}
+  #printArea, #printArea *, #printAreaRekap, #printAreaRekap *{visibility:visible;}
   #printArea{position:absolute;top:0;left:0;width:100%;}
+  #printAreaRekap{position:absolute !important;top:0;left:0;width:100%;}
   .admin-sidebar,.admin-topbar,.toast,.sidebar-overlay{display:none;}
 }
 </style>
@@ -1330,7 +1331,15 @@ document.getElementById('btnExportRekap').addEventListener('click', ()=>{
 
 document.getElementById('btnPrintRekap').addEventListener('click', ()=>{
   if(rekapRows.length===0){ toast('Tampilkan rekap dulu sebelum print'); return; }
-  const area = document.getElementById('printArea');
+  let area = document.getElementById('printAreaRekap');
+  if(!area){
+    area = document.createElement('div');
+    area.id = 'printAreaRekap';
+    area.style.position = 'fixed';
+    area.style.left = '-9999px';
+    area.style.top = '0';
+    document.body.appendChild(area);
+  }
   area.innerHTML = `<div style="padding:20px;"><h2>Rekap Absensi — SMP Negeri 2 Muara Bungo</h2>
     <table style="width:100%;border-collapse:collapse;" border="1" cellpadding="4">
     <thead><tr><th>Tanggal</th><th>Nama</th><th>Kelas</th><th>Jam</th><th>Jenis</th><th>Status</th><th>Cara</th><th>Petugas</th></tr></thead>
@@ -1893,6 +1902,16 @@ document.getElementById('btnSimpanManual').addEventListener('click', async ()=>{
 });
 
 /* ================= INIT ================= */
+(function ensurePrintAreaRekap(){
+  if(!document.getElementById('printAreaRekap')){
+    var d = document.createElement('div');
+    d.id = 'printAreaRekap';
+    d.style.position = 'fixed';
+    d.style.left = '-9999px';
+    d.style.top = '0';
+    document.body.appendChild(d);
+  }
+})();
 renderHeroBarcode();
 loadLandingStats();
 checkSessionOnLoad();
