@@ -59,6 +59,16 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
   --danger:#d64545; --danger-bg:#fdeceb; --radius:16px; --radius-sm:10px;
   font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
 }
+body.dark{
+  --bg:#0b1120; --panel:#151d33; --ink:#e7ecf7; --muted:#94a3c4;
+  --line:#293353; --success-bg:#123322; --danger-bg:#3a1a1a;
+}
+body.dark .card, body.dark .stat-card, body.dark .chart-card, body.dark .id-card,
+body.dark .login-card, body.dark .scanner-card{ background:var(--panel); border-color:var(--line); }
+body.dark input, body.dark select{ background:#101a30; color:var(--ink); border-color:var(--line); }
+body.dark table{ color:var(--ink); }
+body.dark .admin-topbar{ background:var(--panel); border-color:var(--line); }
+.theme-toggle{background:none;border:1px solid var(--line);border-radius:20px;padding:5px 12px;cursor:pointer;color:var(--ink);font-size:.8rem;}
 *{box-sizing:border-box;}
 html,body{margin:0;padding:0;}
 body{background:var(--bg);color:var(--ink);min-height:100vh;-webkit-font-smoothing:antialiased;}
@@ -396,6 +406,14 @@ th{color:var(--muted);font-weight:700;font-size:.7rem;text-transform:uppercase;l
       </div>
     </div>
 
+    <div id="scanPending" class="scan-setup hide">
+      <div class="card">
+        <h2 style="margin:0 0 6px;color:var(--navy);">⏳ Menunggu Persetujuan Admin</h2>
+        <p style="color:var(--muted);font-size:.85rem;margin:0 0 4px;">Perangkat <b id="scanPendingName"></b> sudah terdaftar, tapi belum disetujui admin untuk melakukan scan.</p>
+        <p style="color:var(--muted);font-size:.85rem;">Hubungi admin untuk menyetujui perangkat ini di menu Petugas Scanner.</p>
+      </div>
+    </div>
+
     <div id="scanMain" class="scan-body hide">
       <div>
         <div class="scan-cam-box">
@@ -406,12 +424,49 @@ th{color:var(--muted);font-weight:700;font-size:.7rem;text-transform:uppercase;l
           <button class="btn btn-navy block" id="btnStartScan">▶ Mulai Kamera</button>
           <button class="btn btn-outline block hide" id="btnStopScan">⏸ Stop</button>
         </div>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button class="btn btn-outline block" id="btnOpenManualAbsen">📝 Absensi Manual</button>
+        </div>
+        <div class="card" style="margin-top:12px;padding:12px;text-align:center;">
+          <div class="num" id="scanJumlahHariIni" style="font-size:1.6rem;font-weight:800;color:var(--navy);">0</div>
+          <div class="lbl" style="font-size:.75rem;color:var(--muted);">Jumlah Scan Hari Ini (perangkat ini)</div>
+        </div>
       </div>
       <div>
         <div class="scan-result-card idle" id="scanResultCard">Menunggu scan pertama...</div>
         <div class="scan-history">
-          <h4>Riwayat Scan Terakhir</h4>
+          <h4>Riwayat Hari Ini</h4>
           <div id="scanHistList"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="scanManualPanel" class="scan-setup hide">
+      <div class="card">
+        <h2 style="margin:0 0 6px;color:var(--navy);">Absensi Manual</h2>
+        <p style="color:var(--muted);font-size:.85rem;margin:0 0 14px;">Nama harus dipilih dari data siswa terdaftar — nama di luar data tidak bisa disimpan.</p>
+        <label class="field">Nama Siswa</label>
+        <input type="text" id="inpManualNama" list="dlManualSiswa" placeholder="Ketik untuk cari nama siswa...">
+        <datalist id="dlManualSiswa"></datalist>
+        <div class="field-gap"></div>
+        <label class="field">Kelas</label>
+        <input type="text" id="inpManualKelas" placeholder="Otomatis terisi" disabled>
+        <div class="field-gap"></div>
+        <label class="field">Status</label>
+        <select id="selManualStatus">
+          <option value="Hadir">Hadir</option>
+          <option value="Sakit">Sakit</option>
+          <option value="Izin">Izin</option>
+          <option value="Alpha">Alpha</option>
+          <option value="Dispensasi">Dispensasi</option>
+        </select>
+        <div class="field-gap"></div>
+        <label class="field">Keterangan (opsional)</label>
+        <input type="text" id="inpManualKeterangan" placeholder="Contoh: Sakit demam, surat dokter menyusul">
+        <div class="field-gap"></div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-navy block" id="btnSimpanManual">Simpan Absensi</button>
+          <button class="btn btn-outline block" id="btnBatalManual">Batal</button>
         </div>
       </div>
     </div>
@@ -431,6 +486,7 @@ th{color:var(--muted);font-weight:700;font-size:.7rem;text-transform:uppercase;l
         <button data-p="scanner"><span class="ic">📷</span>Petugas Scanner</button>
         <button data-p="riwayat"><span class="ic">🕘</span>Riwayat Absensi</button>
         <button data-p="rekap"><span class="ic">📊</span>Rekap</button>
+        <button data-p="log"><span class="ic">📜</span>Log Aktivitas</button>
         <button data-p="cetak"><span class="ic">🪪</span>Cetak Kartu</button>
         <button data-p="pengaturan"><span class="ic">⚙️</span>Pengaturan</button>
       </nav>
@@ -441,6 +497,8 @@ th{color:var(--muted);font-weight:700;font-size:.7rem;text-transform:uppercase;l
       <div class="admin-topbar">
         <button class="admin-menu-toggle" id="btnAdminMenuToggle" title="Buka menu">☰</button>
         <h2 id="adminPageTitle">Dashboard</h2>
+        <span class="pill hadir" id="adminRoleBadge" style="margin-left:8px;">Admin</span>
+        <button class="theme-toggle" id="btnThemeToggle" style="margin-left:auto;">🌙 Mode Gelap</button>
         <div class="admin-search"><span class="ic">🔍</span><input type="text" placeholder="Cari siswa, kelas, atau scanner..."></div>
         <div class="admin-profile"><div class="avatar">A</div>Administrator</div>
       </div>
@@ -458,11 +516,25 @@ th{color:var(--muted);font-weight:700;font-size:.7rem;text-transform:uppercase;l
               <div><div class="num" id="dashHadirHariIni">0</div><div class="lbl">Hadir Hari Ini</div><div class="sub" id="dashHadirPct">0% dari total siswa</div></div></div>
             <div class="stat-card"><div class="ic-wrap" style="background:var(--danger-bg);color:var(--danger);">👥</div>
               <div><div class="num" id="dashBelumHadir">0</div><div class="lbl">Belum Hadir</div><div class="sub" id="dashBelumPct">0% dari total siswa</div></div></div>
+            <div class="stat-card"><div class="ic-wrap" style="background:#fdf3e2;color:#b8791f;">⏰</div>
+              <div><div class="num" id="dashTerlambat">0</div><div class="lbl">Terlambat</div><div class="sub">Hari ini</div></div></div>
+            <div class="stat-card"><div class="ic-wrap" style="background:#e7f0fb;color:#2b6cb0;">🤒</div>
+              <div><div class="num" id="dashSakit">0</div><div class="lbl">Sakit</div><div class="sub">Hari ini</div></div></div>
+            <div class="stat-card"><div class="ic-wrap" style="background:#f3e8fb;color:#7c3aed;">📄</div>
+              <div><div class="num" id="dashIzin">0</div><div class="lbl">Izin</div><div class="sub">Hari ini</div></div></div>
+            <div class="stat-card"><div class="ic-wrap" style="background:var(--danger-bg);color:var(--danger);">❌</div>
+              <div><div class="num" id="dashAlpha">0</div><div class="lbl">Alpha</div><div class="sub">Hari ini</div></div></div>
+            <div class="stat-card"><div class="ic-wrap" style="background:#eef2f7;color:#556;">🗓️</div>
+              <div><div class="num" id="dashDispensasi">0</div><div class="lbl">Dispensasi</div><div class="sub">Hari ini</div></div></div>
+            <div class="stat-card"><div class="ic-wrap" style="background:#e7f7ee;color:var(--success);">📈</div>
+              <div><div class="num" id="dashPersentase">0%</div><div class="lbl">Persentase Kehadiran</div><div class="sub">Hari ini</div></div></div>
           </div>
 
           <div class="chart-row">
+            <div class="card chart-card"><h3>Grafik Kehadiran Harian</h3><div id="chartDaily"></div></div>
             <div class="card chart-card"><h3>Grafik Kehadiran Mingguan</h3><div id="chartWeekly"></div></div>
             <div class="card chart-card"><h3>Grafik Kehadiran Bulanan</h3><div id="chartMonthly"></div></div>
+            <div class="card chart-card"><h3>Grafik Kehadiran per Kelas</h3><div id="chartKelas"></div></div>
           </div>
 
           <div class="two-col">
@@ -549,7 +621,7 @@ th{color:var(--muted);font-weight:700;font-size:.7rem;text-transform:uppercase;l
         <!-- REKAP -->
         <section class="admin-page hide" id="ap-rekap">
           <div class="card">
-            <h2 style="margin:0 0 12px;font-size:1rem;">Rekap Kehadiran Hari Ini</h2>
+            <h2 style="margin:0 0 12px;font-size:1rem;">Rekap Hari Ini (ringkas)</h2>
             <div class="stat-row" style="grid-template-columns:repeat(3,1fr);">
               <div class="stat-card"><div class="ic-wrap" style="background:#e7f7ee;color:var(--success);">✅</div>
                 <div><div class="num" id="statHadir">0</div><div class="lbl">Hadir</div></div></div>
@@ -558,14 +630,63 @@ th{color:var(--muted);font-weight:700;font-size:.7rem;text-transform:uppercase;l
               <div class="stat-card"><div class="ic-wrap" style="background:var(--danger-bg);color:var(--danger);">❌</div>
                 <div><div class="num" id="statAlpa">0</div><div class="lbl">Belum Absen</div></div></div>
             </div>
-            <div class="field-gap"></div>
-            <label class="field">Filter Kelas</label>
-            <select id="selKelasRekap"><option value="">Semua kelas</option></select>
-            <div style="max-height:340px;overflow-y:auto;margin-top:10px;">
-              <table><thead><tr><th>Nama</th><th>Kelas</th><th>Jam</th><th>Status</th></tr></thead><tbody id="tblRekap"></tbody></table>
+          </div>
+
+          <div class="card" style="margin-top:16px;">
+            <h2 style="margin:0 0 12px;font-size:1rem;">Rekap Absensi (Harian/Mingguan/Bulanan/Semester/Tahunan)</h2>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+              <div><label class="field">Periode</label>
+                <select id="selRekapPeriode">
+                  <option value="harian">Harian</option>
+                  <option value="mingguan">Mingguan</option>
+                  <option value="bulanan">Bulanan</option>
+                  <option value="semester">Semester</option>
+                  <option value="tahunan">Tahunan</option>
+                  <option value="custom">Rentang Tanggal Kustom</option>
+                </select>
+              </div>
+              <div><label class="field">Tanggal Acuan</label><input type="date" id="inpRekapTanggal"></div>
+              <div id="rekapRangeCustom" class="hide" style="grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <div><label class="field">Dari Tanggal</label><input type="date" id="inpRekapDari"></div>
+                <div><label class="field">Sampai Tanggal</label><input type="date" id="inpRekapSampai"></div>
+              </div>
+              <div><label class="field">Kelas</label><select id="selKelasRekap"><option value="">Semua kelas</option></select></div>
+              <div><label class="field">Nama Siswa</label><input type="text" id="inpRekapNama" placeholder="Cari nama..."></div>
+              <div><label class="field">Status</label><select id="selRekapStatus"><option value="">Semua status</option>
+                <option>Hadir</option><option>Terlambat</option><option>Sakit</option><option>Izin</option><option>Alpha</option><option>Dispensasi</option></select></div>
+              <div><label class="field">Jenis</label><select id="selRekapJenis"><option value="">Semua</option><option>Masuk</option><option>Pulang</option></select></div>
+              <div><label class="field">Cara Absensi</label><select id="selRekapCara"><option value="">Semua</option><option>QR</option><option>Manual</option></select></div>
+              <div><label class="field">Petugas Scanner</label><select id="selRekapScanner"><option value="">Semua</option></select></div>
             </div>
             <div class="field-gap"></div>
-            <button class="btn btn-outline block" id="btnExportRekap">⬇ Export Excel</button>
+            <button class="btn btn-navy" id="btnTampilkanRekap">🔍 Tampilkan Rekap</button>
+            <div style="max-height:360px;overflow-y:auto;margin-top:10px;">
+              <table><thead><tr><th>Tanggal</th><th>Nama</th><th>Kelas</th><th>Jam</th><th>Jenis</th><th>Status</th><th>Cara</th><th>Petugas</th></tr></thead><tbody id="tblRekap"></tbody></table>
+            </div>
+            <div class="field-gap"></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button class="btn btn-outline" id="btnExportRekap">⬇ Export Excel</button>
+              <button class="btn btn-outline" id="btnPrintRekap">🖨 Print / PDF</button>
+              <button class="btn btn-outline" id="btnSimpanArsip">🗄 Simpan ke Arsip</button>
+              <button class="btn btn-outline" id="btnRefreshRekap">🔄 Refresh</button>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top:16px;">
+            <h2 style="margin:0 0 12px;font-size:1rem;">Arsip Rekap</h2>
+            <div id="listArsipRekap"></div>
+          </div>
+        </section>
+
+        <!-- LOG AKTIVITAS -->
+        <section class="admin-page hide" id="ap-log">
+          <div class="card">
+            <h2 style="margin:0 0 12px;font-size:1rem;">Log Aktivitas</h2>
+            <p style="margin:0 0 14px;font-size:.8rem;color:var(--muted);">Mencatat login/logout, scan, absensi manual, tambah/edit/hapus data, dan persetujuan petugas scanner.</p>
+            <button class="btn btn-outline sm" id="btnRefreshLog" style="margin-bottom:10px;">🔄 Refresh</button>
+            <div style="max-height:460px;overflow-y:auto;">
+              <table><thead><tr><th>Waktu</th><th>Aktor</th><th>Aksi</th><th>Detail</th></tr></thead><tbody id="tblLog"></tbody></table>
+            </div>
           </div>
         </section>
 
@@ -592,6 +713,13 @@ th{color:var(--muted);font-weight:700;font-size:.7rem;text-transform:uppercase;l
             <h2 style="margin:0 0 14px;font-size:1rem;">Pengaturan</h2>
             <label class="field">Jam Masuk (batas terlambat)</label>
             <input type="text" id="inpJamMasuk" placeholder="07:00">
+            <div class="field-gap"></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+              <div><label class="field">Jendela Absen Masuk — Mulai</label><input type="text" id="inpJamMasukMulai" placeholder="06:00"></div>
+              <div><label class="field">Jendela Absen Masuk — Selesai</label><input type="text" id="inpJamMasukSelesai" placeholder="07:15"></div>
+              <div><label class="field">Jendela Absen Pulang — Mulai</label><input type="text" id="inpJamPulangMulai" placeholder="16:00"></div>
+              <div><label class="field">Jendela Absen Pulang — Selesai</label><input type="text" id="inpJamPulangSelesai" placeholder="18:00"></div>
+            </div>
             <div class="field-gap"></div>
             <button class="btn btn-navy" id="btnSimpanPengaturan">Simpan Pengaturan</button>
           </div>
@@ -626,11 +754,27 @@ function toast(msg){
 function todayStr(){ return new Date().toISOString().slice(0,10); }
 function nowTime(){ return new Date().toTimeString().slice(0,5); }
 
-let JAM_MASUK = '07:00';
+let JAM_MASUK = '07:00';           // batas terlambat (dalam jendela masuk)
+let JAM_MASUK_MULAI = '06:00';
+let JAM_MASUK_SELESAI = '07:15';
+let JAM_PULANG_MULAI = '16:00';
+let JAM_PULANG_SELESAI = '18:00';
 async function loadJamMasuk(){
   if(!sb) return;
-  const {data} = await sb.from('settings').select('value').eq('key','jam_masuk').maybeSingle();
-  if(data && data.value) JAM_MASUK = data.value;
+  const {data} = await sb.from('settings').select('key,value').in('key',['jam_masuk','jam_masuk_mulai','jam_masuk_selesai','jam_pulang_mulai','jam_pulang_selesai']);
+  (data||[]).forEach(r=>{
+    if(r.key==='jam_masuk' && r.value) JAM_MASUK = r.value;
+    if(r.key==='jam_masuk_mulai' && r.value) JAM_MASUK_MULAI = r.value;
+    if(r.key==='jam_masuk_selesai' && r.value) JAM_MASUK_SELESAI = r.value;
+    if(r.key==='jam_pulang_mulai' && r.value) JAM_PULANG_MULAI = r.value;
+    if(r.key==='jam_pulang_selesai' && r.value) JAM_PULANG_SELESAI = r.value;
+  });
+}
+/* Tentukan jenis absensi (Masuk/Pulang) berdasarkan jam saat ini. null = di luar jam absensi. */
+function tentukanJenisAbsen(jam){
+  if(jam >= JAM_MASUK_MULAI && jam <= JAM_MASUK_SELESAI) return 'Masuk';
+  if(jam >= JAM_PULANG_MULAI && jam <= JAM_PULANG_SELESAI) return 'Pulang';
+  return null;
 }
 
 /* ================= ROUTER (top-level views) ================= */
@@ -646,7 +790,7 @@ document.getElementById('btnGoLoginHero').addEventListener('click', ()=>showView
 document.getElementById('btnGoScanNav').addEventListener('click', ()=>{ showView('scan'); initScanPage(); });
 document.getElementById('btnGoScanHero').addEventListener('click', ()=>{ showView('scan'); initScanPage(); });
 document.getElementById('btnBackFromLogin').addEventListener('click', (e)=>{ e.preventDefault(); showView('landing'); });
-document.getElementById('btnExitScan').addEventListener('click', ()=>{ stopScanIfRunning(); showView('landing'); });
+document.getElementById('btnExitScan').addEventListener('click', ()=>{ logAktivitas('logout', `${scannerDeviceName||'Perangkat'} keluar dari mode scan`); stopScanIfRunning(); showView('landing'); });
 
 /* ================= AUTH ================= */
 document.getElementById('btnDoLogin').addEventListener('click', async ()=>{
@@ -658,15 +802,27 @@ document.getElementById('btnDoLogin').addEventListener('click', async ()=>{
   if(!email || !password){ errBox.textContent='Isi email & password dulu'; errBox.classList.add('show'); return; }
   const {data, error} = await sb.auth.signInWithPassword({email, password});
   if(error){ errBox.textContent = 'Login gagal: email atau password salah'; errBox.classList.add('show'); return; }
-  enterAdmin();
+  await enterAdmin();
+  logAktivitas('login', `${currentAdminEmail} login sebagai ${currentAdminRole}`);
 });
 
 document.getElementById('btnLogout').addEventListener('click', async ()=>{
+  logAktivitas('logout', `${currentAdminEmail || 'Admin'} logout dari panel admin`);
   if(sb) await sb.auth.signOut();
   showView('landing');
 });
 
-/* ================= SIDEBAR MOBILE (kembali/keluar menu admin) ================= */
+/* ================= DARK / LIGHT MODE ================= */
+function applyTheme(mode){
+  document.body.classList.toggle('dark', mode==='dark');
+  const btn = document.getElementById('btnThemeToggle');
+  if(btn) btn.textContent = mode==='dark' ? '☀️ Mode Terang' : '🌙 Mode Gelap';
+  localStorage.setItem('theme_mode', mode);
+}
+applyTheme(localStorage.getItem('theme_mode') || 'light');
+document.getElementById('btnThemeToggle').addEventListener('click', ()=>{
+  applyTheme(document.body.classList.contains('dark') ? 'light' : 'dark');
+});
 function openAdminSidebar(){
   document.getElementById('adminSidebar').classList.add('open');
   document.getElementById('sidebarOverlay').classList.add('show');
@@ -679,9 +835,35 @@ document.getElementById('btnAdminMenuToggle').addEventListener('click', openAdmi
 document.getElementById('btnSidebarClose').addEventListener('click', closeAdminSidebar);
 document.getElementById('sidebarOverlay').addEventListener('click', closeAdminSidebar);
 
+let currentAdminRole = 'Admin';
+let currentAdminEmail = '';
+const ROLE_READONLY = ['Guru', 'Kepala Sekolah']; // hanya lihat dashboard, riwayat, rekap
+async function loadCurrentAdminRole(){
+  currentAdminRole = 'Admin';
+  if(!sb) return;
+  const {data:userData} = await sb.auth.getUser();
+  currentAdminEmail = userData?.user?.email || '';
+  if(!currentAdminEmail) return;
+  try{
+    const {data} = await sb.from('admin_roles').select('role').eq('email', currentAdminEmail).maybeSingle();
+    if(data && data.role) currentAdminRole = data.role;
+  }catch(e){ /* tabel admin_roles belum ada — semua login dianggap Admin */ }
+}
+function applyRoleRestrictions(){
+  const readonly = ROLE_READONLY.includes(currentAdminRole);
+  document.querySelectorAll('.admin-nav button').forEach(b=>{
+    const p = b.dataset.p;
+    const hiddenForReadonly = ['siswa','kelas','scanner','log','pengaturan'];
+    b.classList.toggle('hide', readonly && hiddenForReadonly.includes(p));
+  });
+  document.getElementById('adminRoleBadge') && (document.getElementById('adminRoleBadge').textContent = currentAdminRole);
+  document.body.classList.toggle('role-readonly', readonly);
+}
 async function enterAdmin(){
   showView('admin');
-  showAdminPage('dashboard');
+  await loadCurrentAdminRole();
+  applyRoleRestrictions();
+  showAdminPage(ROLE_READONLY.includes(currentAdminRole) ? 'dashboard' : 'dashboard');
   await Promise.all([refreshSiswaCache(), refreshAbsenCache(), refreshScannersCache()]);
   renderDashboard();
 }
@@ -728,6 +910,22 @@ function isScannerOnline(s){
   return (Date.now() - new Date(s.last_seen).getTime()) < 10*60*1000; // 10 menit
 }
 
+/* ================= LOG AKTIVITAS =================
+   Mencatat semua aktivitas penting. Butuh tabel log_aktivitas
+   (lihat migrasi-absensi.sql). Gagal-diam kalau tabel belum ada,
+   supaya fitur lain tidak ikut rusak. */
+async function logAktivitas(aksi, detail){
+  if(!sb) return;
+  try{
+    await sb.from('log_aktivitas').insert({
+      aktor: (typeof scannerDeviceName!=='undefined' && scannerDeviceName) || 'Admin',
+      peran: (typeof scannerDeviceName!=='undefined' && scannerDeviceName) ? 'Petugas Scanner' : 'Admin',
+      aksi, detail,
+      perangkat: (typeof scannerDeviceName!=='undefined') ? scannerDeviceName : null
+    });
+  }catch(e){ /* tabel log_aktivitas belum ada — abaikan supaya tidak mengganggu fitur lain */ }
+}
+
 /* ================= LANDING PUBLIC STATS ================= */
 async function loadLandingStats(){
   if(!sb) return;
@@ -755,7 +953,7 @@ function subscribeRealtime(){
   sb.channel('absen-changes').on('postgres_changes', {event:'*', schema:'public', table:'absen'}, async ()=>{
     await refreshAbsenCache();
     if(!document.getElementById('view-admin').classList.contains('hide')){
-      renderRekap(); renderDashboard();
+      renderRekapHariIni(); renderDashboard();
     }
   }).subscribe();
 
@@ -769,7 +967,7 @@ function subscribeRealtime(){
 
 /* ================= ADMIN SIDEBAR ROUTER ================= */
 const ADMIN_TITLES = {dashboard:'Dashboard', siswa:'Data Siswa', kelas:'Data Kelas', scanner:'Petugas Scanner',
-  riwayat:'Riwayat Absensi', rekap:'Rekap', cetak:'Cetak Kartu', pengaturan:'Pengaturan'};
+  riwayat:'Riwayat Absensi', rekap:'Rekap', log:'Log Aktivitas', cetak:'Cetak Kartu', pengaturan:'Pengaturan'};
 
 function showAdminPage(name){
   document.querySelectorAll('.admin-nav button').forEach(b=>b.classList.toggle('active', b.dataset.p===name));
@@ -780,9 +978,22 @@ function showAdminPage(name){
   if(name==='kelas') renderKelasPage();
   if(name==='scanner') renderScannerPage();
   if(name==='riwayat'){ refreshKelasSelect(); document.getElementById('riwayatTanggal').value = todayStr(); }
-  if(name==='rekap') renderRekap();
+  if(name==='rekap'){
+    renderRekapHariIni();
+    document.getElementById('inpRekapTanggal').value = todayStr();
+    const selScanner = document.getElementById('selRekapScanner');
+    selScanner.innerHTML = '<option value="">Semua</option>' + scannersCache.map(s=>`<option value="${s.nama}">${s.nama}</option>`).join('');
+    renderArsipRekap();
+  }
+  if(name==='log') renderLogAktivitas();
   if(name==='cetak') refreshKelasSelect();
-  if(name==='pengaturan') document.getElementById('inpJamMasuk').value = JAM_MASUK;
+  if(name==='pengaturan'){
+    document.getElementById('inpJamMasuk').value = JAM_MASUK;
+    document.getElementById('inpJamMasukMulai').value = JAM_MASUK_MULAI;
+    document.getElementById('inpJamMasukSelesai').value = JAM_MASUK_SELESAI;
+    document.getElementById('inpJamPulangMulai').value = JAM_PULANG_MULAI;
+    document.getElementById('inpJamPulangSelesai').value = JAM_PULANG_SELESAI;
+  }
 }
 document.querySelectorAll('.admin-nav button').forEach(btn=>{
   btn.addEventListener('click', ()=>{ showAdminPage(btn.dataset.p); closeAdminSidebar(); });
@@ -888,18 +1099,87 @@ function renderKelasPage(){
 /* ================= PETUGAS SCANNER ================= */
 function renderScannerPage(){
   const grid = document.getElementById('scannerListGrid');
-  if(scannersCache.length===0){ grid.innerHTML = '<div class="empty">Belum ada scanner terdaftar. Scanner otomatis terdaftar saat pertama kali dipakai di menu Scan.</div>'; return; }
+  if(scannersCache.length===0){ grid.innerHTML = '<div class="empty">Belum ada scanner terdaftar. Scanner otomatis mengajukan izin saat pertama kali dipakai di menu Scan.</div>'; return; }
   grid.innerHTML = scannersCache.map(s=>{
     const online = isScannerOnline(s);
     const lastSeen = s.last_seen ? new Date(s.last_seen).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'}) : '-';
+    const status = s.status || 'approved';
+    const aktif = s.aktif !== false;
+    const statusPill = status==='pending' ? '<span class="pill telat">Menunggu Persetujuan</span>'
+      : status==='rejected' ? '<span class="pill" style="background:var(--danger-bg);color:var(--danger);">Ditolak</span>'
+      : !aktif ? '<span class="pill" style="background:#eee;color:#888;">Nonaktif</span>'
+      : '<span class="pill hadir">Disetujui</span>';
+    let actions = '';
+    if(status==='pending'){
+      actions = `<button class="btn btn-navy sm" data-act="approve" data-id="${s.id}">✔ Setujui</button>
+        <button class="btn btn-outline sm" data-act="reject" data-id="${s.id}">✕ Tolak</button>`;
+    }else{
+      actions = `<button class="btn btn-outline sm" data-act="${aktif?'nonaktif':'aktif'}" data-id="${s.id}">${aktif?'Nonaktifkan':'Aktifkan'}</button>`;
+    }
+    actions += ` <button class="btn btn-outline sm" data-act="edit" data-id="${s.id}">Edit</button>
+      <button class="btn btn-outline sm" data-act="hapus" data-id="${s.id}">Hapus</button>`;
     return `<div class="scanner-card">
       <div class="name">${s.nama}</div>
       <div class="loc">${s.lokasi||''}</div>
-      <span class="pill ${online?'on':'off'}">${online?'Online':'Offline'}</span>
-      <div class="loc" style="margin-top:6px;">Terakhir scan: ${lastSeen}</div>
+      <div style="margin:4px 0;">${statusPill} <span class="pill ${online?'on':'off'}">${online?'Online':'Offline'}</span></div>
+      <div class="loc" style="margin-top:4px;">Terakhir scan: ${lastSeen}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;">${actions}</div>
     </div>`;
   }).join('');
 }
+document.getElementById('scannerListGrid').addEventListener('click', async (e)=>{
+  const btn = e.target.closest('button[data-act]');
+  if(!btn || !sb) return;
+  const id = btn.dataset.id;
+  const s = scannersCache.find(x=>String(x.id)===String(id));
+  if(!s) return;
+  const act = btn.dataset.act;
+  if(act==='approve'){
+    await sb.from('scanners').update({status:'approved'}).eq('id', id);
+    logAktivitas('setuju_scanner', `Menyetujui perangkat "${s.nama}"`);
+    toast(`Perangkat "${s.nama}" disetujui`);
+  }else if(act==='reject'){
+    await sb.from('scanners').update({status:'rejected'}).eq('id', id);
+    logAktivitas('tolak_scanner', `Menolak perangkat "${s.nama}"`);
+    toast(`Perangkat "${s.nama}" ditolak`);
+  }else if(act==='aktif'){
+    await sb.from('scanners').update({aktif:true}).eq('id', id);
+    logAktivitas('aktifkan_scanner', `Mengaktifkan perangkat "${s.nama}"`);
+    toast(`Perangkat "${s.nama}" diaktifkan`);
+  }else if(act==='nonaktif'){
+    await sb.from('scanners').update({aktif:false}).eq('id', id);
+    logAktivitas('nonaktifkan_scanner', `Menonaktifkan perangkat "${s.nama}"`);
+    toast(`Perangkat "${s.nama}" dinonaktifkan`);
+  }else if(act==='edit'){
+    const namaBaru = prompt('Nama baru untuk perangkat ini:', s.nama);
+    if(namaBaru && namaBaru.trim()){
+      await sb.from('scanners').update({nama:namaBaru.trim()}).eq('id', id);
+      logAktivitas('edit_scanner', `Mengubah nama perangkat "${s.nama}" menjadi "${namaBaru.trim()}"`);
+    }
+  }else if(act==='hapus'){
+    if(!confirm(`Hapus perangkat "${s.nama}"? Riwayat absensi yang sudah tercatat tetap tersimpan.`)) return;
+    await sb.from('scanners').delete().eq('id', id);
+    logAktivitas('hapus_scanner', `Menghapus perangkat "${s.nama}"`);
+    toast(`Perangkat "${s.nama}" dihapus`);
+  }
+  await refreshScannersCache();
+  renderScannerPage();
+});
+
+/* ================= LOG AKTIVITAS (halaman admin) ================= */
+async function renderLogAktivitas(){
+  const tbody = document.getElementById('tblLog');
+  if(!sb){ tbody.innerHTML = '<tr><td colspan="4" class="empty">Supabase belum dikonfigurasi</td></tr>'; return; }
+  const {data, error} = await sb.from('log_aktivitas').select('*').order('waktu', {ascending:false}).limit(200);
+  if(error){
+    tbody.innerHTML = '<tr><td colspan="4" class="empty">Tabel log_aktivitas belum ada — jalankan migrasi-absensi.sql di Supabase SQL Editor</td></tr>';
+    return;
+  }
+  tbody.innerHTML = (data && data.length) ? data.map(l=>`
+    <tr><td>${new Date(l.waktu).toLocaleString('id-ID')}</td><td>${l.aktor||'-'}</td><td>${l.aksi||'-'}</td><td>${l.detail||''}</td></tr>`).join('')
+    : '<tr><td colspan="4" class="empty">Belum ada aktivitas tercatat</td></tr>';
+}
+document.getElementById('btnRefreshLog').addEventListener('click', renderLogAktivitas);
 
 /* ================= RIWAYAT ABSENSI ================= */
 document.getElementById('btnCariRiwayat').addEventListener('click', async ()=>{
@@ -917,47 +1197,158 @@ document.getElementById('btnCariRiwayat').addEventListener('click', async ()=>{
 });
 
 /* ================= REKAP HARI INI ================= */
-function renderRekap(){
-  const kelasFilter = document.getElementById('selKelasRekap').value;
+function renderRekapHariIni(){
+  const kelasFilter = document.getElementById('selKelasRekap') ? document.getElementById('selKelasRekap').value : '';
   const siswaAll = kelasFilter ? siswaCache.filter(s=>s.kelas===kelasFilter) : siswaCache;
   const absenHariIni = kelasFilter ? absenCache.filter(a=>a.kelas===kelasFilter) : absenCache;
-
   const hadir = absenHariIni.filter(a=>a.status==='Hadir').length;
   const telat = absenHariIni.filter(a=>a.status==='Terlambat').length;
   const totalAbsen = siswaAll.filter(s=>absenHariIni.some(a=>a.nama===s.nama && a.kelas===s.kelas)).length;
   const alpa = siswaAll.length - totalAbsen;
-
   document.getElementById('statHadir').textContent = hadir;
   document.getElementById('statTelat').textContent = telat;
   document.getElementById('statAlpa').textContent = alpa;
-
-  const tb = document.getElementById('tblRekap');
-  if(absenHariIni.length===0){ tb.innerHTML = '<tr><td colspan="4" class="empty">Belum ada yang absen hari ini</td></tr>'; return; }
-  tb.innerHTML = absenHariIni.slice().sort((a,b)=>a.jam<b.jam?1:-1).map(a=>`
-    <tr><td>${a.nama}</td><td>${a.kelas}</td><td>${a.jam}</td>
-    <td><span class="pill ${a.status==='Hadir'?'hadir':'telat'}">${a.status}</span></td></tr>`).join('');
 }
-document.getElementById('selKelasRekap').addEventListener('change', renderRekap);
+
+/* ================= REKAP MULTI-PERIODE ================= */
+function computeRekapRange(){
+  const periode = document.getElementById('selRekapPeriode').value;
+  const custom = document.getElementById('rekapRangeCustom');
+  custom.classList.toggle('hide', periode!=='custom');
+  if(periode==='custom'){
+    return {dari: document.getElementById('inpRekapDari').value, sampai: document.getElementById('inpRekapSampai').value};
+  }
+  const acuan = document.getElementById('inpRekapTanggal').value || todayStr();
+  const d = new Date(acuan+'T00:00:00');
+  let dari, sampai;
+  if(periode==='harian'){ dari = sampai = acuan; }
+  else if(periode==='mingguan'){
+    const day = d.getDay()||7;
+    const start = new Date(d); start.setDate(d.getDate()-day+1);
+    const end = new Date(start); end.setDate(start.getDate()+6);
+    dari = start.toISOString().slice(0,10); sampai = end.toISOString().slice(0,10);
+  }else if(periode==='bulanan'){
+    dari = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`;
+    sampai = new Date(d.getFullYear(), d.getMonth()+1, 0).toISOString().slice(0,10);
+  }else if(periode==='semester'){
+    const bulan = d.getMonth()+1;
+    if(bulan>=7){ dari = `${d.getFullYear()}-07-01`; sampai = `${d.getFullYear()}-12-31`; }
+    else{ dari = `${d.getFullYear()}-01-01`; sampai = `${d.getFullYear()}-06-30`; }
+  }else{ dari = `${d.getFullYear()}-01-01`; sampai = `${d.getFullYear()}-12-31`; }
+  return {dari, sampai};
+}
+
+let rekapRows = [];
+async function tampilkanRekap(){
+  if(!sb){ toast('Supabase belum dikonfigurasi'); return; }
+  const {dari, sampai} = computeRekapRange();
+  if(!dari || !sampai){ toast('Isi rentang tanggal dulu'); return; }
+  let q = sb.from('absen').select('*').gte('tanggal', dari).lte('tanggal', sampai)
+    .order('tanggal', {ascending:false}).order('jam', {ascending:false});
+  const kelas = document.getElementById('selKelasRekap').value;
+  const nama = document.getElementById('inpRekapNama').value.trim();
+  const status = document.getElementById('selRekapStatus').value;
+  const jenis = document.getElementById('selRekapJenis').value;
+  const cara = document.getElementById('selRekapCara').value;
+  const scanner = document.getElementById('selRekapScanner').value;
+  if(kelas) q = q.eq('kelas', kelas);
+  if(nama) q = q.ilike('nama', `%${nama}%`);
+  if(status) q = q.eq('status', status);
+  if(jenis) q = q.eq('jenis', jenis);
+  if(cara) q = q.eq('cara', cara);
+  if(scanner) q = q.eq('scanner', scanner);
+  const {data, error} = await q.limit(3000);
+  if(error){ console.error(error); toast('Gagal memuat rekap — pastikan migrasi SQL sudah dijalankan'); return; }
+  rekapRows = data || [];
+  const tb = document.getElementById('tblRekap');
+  tb.innerHTML = rekapRows.length ? rekapRows.map(a=>`
+    <tr><td>${a.tanggal}</td><td>${a.nama}</td><td>${a.kelas}</td><td>${a.jam}</td>
+    <td>${a.jenis||'-'}</td><td><span class="pill ${a.status==='Hadir'?'hadir':(a.status==='Terlambat'?'telat':'')}">${a.status}</span></td>
+    <td>${a.cara||'-'}</td><td>${a.scanner||'-'}</td></tr>`).join('')
+    : '<tr><td colspan="8" class="empty">Tidak ada data untuk filter ini</td></tr>';
+}
+document.getElementById('btnTampilkanRekap').addEventListener('click', tampilkanRekap);
+document.getElementById('btnRefreshRekap').addEventListener('click', tampilkanRekap);
+document.getElementById('selRekapPeriode').addEventListener('change', computeRekapRange);
+document.getElementById('selKelasRekap').addEventListener('change', renderRekapHariIni);
 
 document.getElementById('btnExportRekap').addEventListener('click', ()=>{
-  const kelasFilter = document.getElementById('selKelasRekap').value;
-  const data = (kelasFilter ? absenCache.filter(a=>a.kelas===kelasFilter) : absenCache)
-    .map(a=>({Nama:a.nama, Kelas:a.kelas, Jam:a.jam, Status:a.status, Scanner:a.scanner||'-'}));
-  if(data.length===0){ toast('Tidak ada data untuk diexport'); return; }
+  if(rekapRows.length===0){ toast('Tampilkan rekap dulu sebelum export'); return; }
+  const data = rekapRows.map(a=>({Tanggal:a.tanggal, Nama:a.nama, Kelas:a.kelas, Jam:a.jam, Jenis:a.jenis||'-', Status:a.status, Cara:a.cara||'-', Petugas:a.scanner||'-', Keterangan:a.keterangan||''}));
   const ws = XLSX.utils.json_to_sheet(data);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Rekap');
   XLSX.writeFile(wb, `rekap-absensi-${todayStr()}.xlsx`);
+  logAktivitas('export_rekap', `Export Excel rekap (${rekapRows.length} baris)`);
 });
+
+document.getElementById('btnPrintRekap').addEventListener('click', ()=>{
+  if(rekapRows.length===0){ toast('Tampilkan rekap dulu sebelum print'); return; }
+  const area = document.getElementById('printArea');
+  area.innerHTML = `<div style="padding:20px;"><h2>Rekap Absensi — SMP Negeri 2 Muara Bungo</h2>
+    <table style="width:100%;border-collapse:collapse;" border="1" cellpadding="4">
+    <thead><tr><th>Tanggal</th><th>Nama</th><th>Kelas</th><th>Jam</th><th>Jenis</th><th>Status</th><th>Cara</th><th>Petugas</th></tr></thead>
+    <tbody>${rekapRows.map(a=>`<tr><td>${a.tanggal}</td><td>${a.nama}</td><td>${a.kelas}</td><td>${a.jam}</td><td>${a.jenis||'-'}</td><td>${a.status}</td><td>${a.cara||'-'}</td><td>${a.scanner||'-'}</td></tr>`).join('')}</tbody>
+    </table></div>`;
+  window.print();
+  logAktivitas('print_rekap', `Print rekap (${rekapRows.length} baris)`);
+});
+
+document.getElementById('btnSimpanArsip').addEventListener('click', async ()=>{
+  if(!sb){ toast('Supabase belum dikonfigurasi'); return; }
+  if(rekapRows.length===0){ toast('Tampilkan rekap dulu sebelum disimpan ke arsip'); return; }
+  const periode = document.getElementById('selRekapPeriode').value;
+  const {dari, sampai} = computeRekapRange();
+  const ringkasan = {
+    total: rekapRows.length,
+    hadir: rekapRows.filter(a=>a.status==='Hadir').length,
+    terlambat: rekapRows.filter(a=>a.status==='Terlambat').length,
+    sakit: rekapRows.filter(a=>a.status==='Sakit').length,
+    izin: rekapRows.filter(a=>a.status==='Izin').length,
+    alpha: rekapRows.filter(a=>a.status==='Alpha').length,
+    dispensasi: rekapRows.filter(a=>a.status==='Dispensasi').length,
+  };
+  const {error} = await sb.from('rekap_arsip').insert({
+    jenis_rekap: periode, periode_label: `${dari} s/d ${sampai}`,
+    filter_json: {kelas: document.getElementById('selKelasRekap').value, nama: document.getElementById('inpRekapNama').value, status: document.getElementById('selRekapStatus').value},
+    ringkasan_json: ringkasan, dibuat_oleh: currentAdminEmail || 'Admin'
+  });
+  if(error){ console.error(error); toast('Gagal menyimpan arsip — pastikan migrasi SQL sudah dijalankan'); return; }
+  logAktivitas('simpan_arsip', `Menyimpan rekap ${periode} (${dari} s/d ${sampai}) ke arsip`);
+  toast('Rekap disimpan ke arsip');
+  renderArsipRekap();
+});
+
+async function renderArsipRekap(){
+  const box = document.getElementById('listArsipRekap');
+  if(!sb) return;
+  const {data, error} = await sb.from('rekap_arsip').select('*').order('dibuat_pada', {ascending:false}).limit(30);
+  if(error){ box.innerHTML = '<div class="empty">Tabel rekap_arsip belum ada — jalankan migrasi-absensi.sql</div>'; return; }
+  box.innerHTML = (data && data.length) ? data.map(r=>`
+    <div class="scanner-card" style="margin-bottom:8px;">
+      <div class="name">${r.jenis_rekap} — ${r.periode_label}</div>
+      <div class="loc">Dibuat: ${new Date(r.dibuat_pada).toLocaleString('id-ID')} oleh ${r.dibuat_oleh||'-'}</div>
+      <div class="loc">Hadir: ${r.ringkasan_json?.hadir??'-'} | Terlambat: ${r.ringkasan_json?.terlambat??'-'} | Total baris: ${r.ringkasan_json?.total??'-'}</div>
+    </div>`).join('') : '<div class="empty">Belum ada arsip rekap</div>';
+}
 
 /* ================= PENGATURAN ================= */
 document.getElementById('btnSimpanPengaturan').addEventListener('click', async ()=>{
   if(!sb){ toast('Supabase belum dikonfigurasi'); return; }
-  const val = document.getElementById('inpJamMasuk').value.trim();
-  if(!/^\d{2}:\d{2}$/.test(val)){ toast('Format jam salah, contoh: 07:00'); return; }
-  const {error} = await sb.from('settings').upsert({key:'jam_masuk', value:val});
+  const vals = {
+    jam_masuk: document.getElementById('inpJamMasuk').value.trim(),
+    jam_masuk_mulai: document.getElementById('inpJamMasukMulai').value.trim(),
+    jam_masuk_selesai: document.getElementById('inpJamMasukSelesai').value.trim(),
+    jam_pulang_mulai: document.getElementById('inpJamPulangMulai').value.trim(),
+    jam_pulang_selesai: document.getElementById('inpJamPulangSelesai').value.trim(),
+  };
+  for(const k in vals){ if(!/^\d{2}:\d{2}$/.test(vals[k])){ toast('Format jam salah, contoh: 07:00'); return; } }
+  const rows = Object.entries(vals).map(([key,value])=>({key,value}));
+  const {error} = await sb.from('settings').upsert(rows);
   if(error){ console.error(error); toast('Gagal menyimpan pengaturan'); return; }
-  JAM_MASUK = val;
+  JAM_MASUK = vals.jam_masuk; JAM_MASUK_MULAI = vals.jam_masuk_mulai; JAM_MASUK_SELESAI = vals.jam_masuk_selesai;
+  JAM_PULANG_MULAI = vals.jam_pulang_mulai; JAM_PULANG_SELESAI = vals.jam_pulang_selesai;
+  await logAktivitas('pengaturan', 'Mengubah jendela jam absensi');
   toast('Pengaturan disimpan untuk semua perangkat');
 });
 
@@ -1070,6 +1461,22 @@ function svgBarChart(labels, values){
   return `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto;">${gridLines}${bars}${xLabels}</svg>`;
 }
 
+function loadDailyChart(){
+  const labels = ['Hadir','Terlambat','Sakit','Izin','Alpha','Dispensasi'];
+  const counts = labels.map(st=> absenCache.filter(a=>a.status===st).length);
+  const totalSiswa = siswaCache.length || 1;
+  const values = counts.map(c=>Math.round(c/totalSiswa*100));
+  document.getElementById('chartDaily').innerHTML = svgBarChart(labels, values);
+}
+function loadKelasChart(){
+  const kelasList = [...new Set(siswaCache.map(s=>s.kelas))];
+  const data = kelasList.map(k=>{
+    const total = siswaCache.filter(s=>s.kelas===k).length;
+    const hadir = absenCache.filter(a=>a.kelas===k).length;
+    return {kelas:k, pct: total ? Math.round(hadir/total*100) : 0};
+  });
+  document.getElementById('chartKelas').innerHTML = svgBarChart(data.map(d=>d.kelas), data.map(d=>d.pct));
+}
 async function loadWeeklyChart(){
   if(!sb) return;
   const totalSiswa = siswaCache.length || 1;
@@ -1114,6 +1521,13 @@ async function renderDashboard(){
   const belumHadir = Math.max(0, totalSiswa - hadirHariIni);
   const pctHadir = totalSiswa ? Math.round(hadirHariIni/totalSiswa*100) : 0;
   const pctBelum = totalSiswa ? Math.round(belumHadir/totalSiswa*100) : 0;
+  const countStatus = (st)=> absenCache.filter(a=>a.status===st).length;
+  const terlambat = countStatus('Terlambat');
+  const sakit = countStatus('Sakit');
+  const izin = countStatus('Izin');
+  const alpha = countStatus('Alpha');
+  const dispensasi = countStatus('Dispensasi');
+  const hadirMurni = totalSiswa ? Math.round((absenCache.filter(a=>a.status==='Hadir'||a.status==='Terlambat').length)/totalSiswa*100) : 0;
 
   document.getElementById('dashTotalSiswa').textContent = totalSiswa;
   document.getElementById('dashScannerAktif').textContent = scannerAktif;
@@ -1121,6 +1535,12 @@ async function renderDashboard(){
   document.getElementById('dashBelumHadir').textContent = belumHadir;
   document.getElementById('dashHadirPct').textContent = `${pctHadir}% dari total siswa`;
   document.getElementById('dashBelumPct').textContent = `${pctBelum}% dari total siswa`;
+  document.getElementById('dashTerlambat').textContent = terlambat;
+  document.getElementById('dashSakit').textContent = sakit;
+  document.getElementById('dashIzin').textContent = izin;
+  document.getElementById('dashAlpha').textContent = alpha;
+  document.getElementById('dashDispensasi').textContent = dispensasi;
+  document.getElementById('dashPersentase').textContent = `${hadirMurni}%`;
 
   // Absensi Terbaru (5 terbaru)
   const terbaru = absenCache.slice().sort((a,b)=> a.jam < b.jam ? 1 : -1).slice(0,5);
@@ -1161,8 +1581,10 @@ async function renderDashboard(){
       <div class="loc" style="margin-top:6px;">Terakhir scan: ${lastSeen}</div></div>`;
   }).join('') : '<div class="empty">Belum ada scanner terdaftar</div>';
 
+  loadDailyChart();
   loadWeeklyChart();
   loadMonthlyChart();
+  loadKelasChart();
 }
 
 /* ================= SCAN KIOSK ================= */
@@ -1178,35 +1600,49 @@ function updateScanClock(){
 
 async function initScanPage(){
   await loadJamMasuk();
-  await Promise.all([refreshSiswaCache(), refreshAbsenCache()]);
+  await Promise.all([refreshSiswaCache(), refreshAbsenCache(), refreshScannersCache()]);
   if(!scanClockTimer){ updateScanClock(); scanClockTimer = setInterval(updateScanClock, 1000); }
+
+  document.getElementById('scanSetup').classList.add('hide');
+  document.getElementById('scanMain').classList.add('hide');
+  document.getElementById('scanPending').classList.add('hide');
 
   if(!scannerDeviceName){
     document.getElementById('scanSetup').classList.remove('hide');
-    document.getElementById('scanMain').classList.add('hide');
-  }else{
-    document.getElementById('scanDeviceName').textContent = scannerDeviceName;
-    document.getElementById('scanSetup').classList.add('hide');
-    document.getElementById('scanMain').classList.remove('hide');
-    await heartbeatScanner();
-    if(!scanHeartbeatTimer) scanHeartbeatTimer = setInterval(heartbeatScanner, 60000);
+    return;
   }
+  const scannerRow = scannersCache.find(s=>s.id===scannerDeviceId);
+  const belumDisetujui = scannerRow && scannerRow.status && scannerRow.status!=='approved';
+  const nonaktif = scannerRow && scannerRow.aktif===false;
+  if(belumDisetujui || nonaktif){
+    document.getElementById('scanPendingName').textContent = scannerDeviceName;
+    document.getElementById('scanPending').classList.remove('hide');
+    if(!scanHeartbeatTimer) scanHeartbeatTimer = setInterval(async ()=>{ await refreshScannersCache(); initScanPage(); }, 15000);
+    return;
+  }
+  document.getElementById('scanDeviceName').textContent = scannerDeviceName;
+  document.getElementById('scanMain').classList.remove('hide');
+  renderScanJumlahHariIni();
+  await heartbeatScanner();
+  if(!scanHeartbeatTimer) scanHeartbeatTimer = setInterval(heartbeatScanner, 60000);
+}
+function renderScanJumlahHariIni(){
+  const el = document.getElementById('scanJumlahHariIni');
+  if(el) el.textContent = absenCache.filter(a=>a.scanner===scannerDeviceName).length;
 }
 
 document.getElementById('btnSaveScannerName').addEventListener('click', async ()=>{
   const nama = document.getElementById('inpScannerName').value.trim();
   if(!nama){ toast('Isi nama scanner dulu'); return; }
   if(!sb){ toast('Supabase belum dikonfigurasi'); return; }
-  const {data, error} = await sb.from('scanners').insert({nama, lokasi:''}).select().single();
+  const {data, error} = await sb.from('scanners').insert({nama, lokasi:'', status:'pending', aktif:true}).select().single();
   if(error){ console.error(error); toast('Gagal mendaftarkan scanner'); return; }
   scannerDeviceId = data.id; scannerDeviceName = data.nama;
   localStorage.setItem('scanner_device_id', scannerDeviceId);
   localStorage.setItem('scanner_device_name', scannerDeviceName);
-  document.getElementById('scanDeviceName').textContent = scannerDeviceName;
-  document.getElementById('scanSetup').classList.add('hide');
-  document.getElementById('scanMain').classList.remove('hide');
-  await heartbeatScanner();
-  if(!scanHeartbeatTimer) scanHeartbeatTimer = setInterval(heartbeatScanner, 60000);
+  logAktivitas('daftar_scanner', `Perangkat "${nama}" mengajukan izin scan`);
+  toast('Perangkat terdaftar, menunggu persetujuan admin');
+  await initScanPage();
 });
 
 async function heartbeatScanner(){
@@ -1250,6 +1686,16 @@ async function onScanSuccess(decodedText){
   if(now - lastScanTime < 1500) return;
   lastScanTime = now;
 
+  const scannerRow = scannersCache.find(s=>s.id===scannerDeviceId);
+  if(scannerRow && (scannerRow.status && scannerRow.status!=='approved')){
+    showScanResult(false, `Perangkat ini belum disetujui admin (status: ${scannerRow.status})`);
+    beep(false); return;
+  }
+  if(scannerRow && scannerRow.aktif===false){
+    showScanResult(false, `Perangkat ini dinonaktifkan admin`);
+    beep(false); return;
+  }
+
   const parts = decodedText.split('|').map(p=>p.trim());
   const nama = parts[0] || '', kelas = parts[1] || '';
   const card = document.getElementById('scanResultCard');
@@ -1263,15 +1709,21 @@ async function onScanSuccess(decodedText){
     showScanResult(false, `${nama} (${kelas}) — tidak terdaftar di data siswa`);
     beep(false); return;
   }
-  const sudah = absenCache.find(a=>a.nama===siswa.nama && a.kelas===siswa.kelas && a.tanggal===todayStr());
+
+  const jam = nowTime();
+  const jenis = tentukanJenisAbsen(jam);
+  if(!jenis){
+    showScanResult(false, `Di luar jam absensi (Masuk ${JAM_MASUK_MULAI}-${JAM_MASUK_SELESAI}, Pulang ${JAM_PULANG_MULAI}-${JAM_PULANG_SELESAI})`);
+    beep(false); return;
+  }
+  const sudah = absenCache.find(a=>a.nama===siswa.nama && a.kelas===siswa.kelas && a.tanggal===todayStr() && (a.jenis||'Masuk')===jenis);
   if(sudah){
-    showScanResult(false, `${siswa.nama} — sudah absen (${sudah.jam})`);
+    showScanResult(false, `${siswa.nama} — sudah absen ${jenis} (${sudah.jam})`);
     beep(false); return;
   }
 
-  const jam = nowTime();
-  const telat = jam > JAM_MASUK;
-  const entry = {nama:siswa.nama, kelas:siswa.kelas, tanggal:todayStr(), jam, status: telat?'Terlambat':'Hadir', scanner: scannerDeviceName};
+  const telat = jenis==='Masuk' && jam > JAM_MASUK;
+  const entry = {nama:siswa.nama, kelas:siswa.kelas, tanggal:todayStr(), jam, status: telat?'Terlambat':'Hadir', scanner: scannerDeviceName, jenis, cara:'QR'};
   absenCache.push(entry);
   const {error} = await sb.from('absen').insert(entry);
   if(error){
@@ -1281,6 +1733,8 @@ async function onScanSuccess(decodedText){
     beep(false); return;
   }
   heartbeatScanner();
+  logAktivitas('scan', `${siswa.nama} (${siswa.kelas}) absen ${jenis} via QR`);
+  renderScanJumlahHariIni();
 
   card.className = 'scan-result-card ok';
   card.innerHTML = `
@@ -1312,6 +1766,48 @@ function prependScanHistory(nama, kelas, jam, telat){
   list.insertBefore(row, list.firstChild);
   while(list.children.length > 6) list.removeChild(list.lastChild);
 }
+
+/* ================= ABSENSI MANUAL (dari kiosk scan) ================= */
+document.getElementById('btnOpenManualAbsen').addEventListener('click', ()=>{
+  const dl = document.getElementById('dlManualSiswa');
+  dl.innerHTML = siswaCache.map(s=>`<option value="${s.nama.replace(/"/g,'&quot;')}">`).join('');
+  document.getElementById('inpManualNama').value = '';
+  document.getElementById('inpManualKelas').value = '';
+  document.getElementById('inpManualKeterangan').value = '';
+  document.getElementById('selManualStatus').value = 'Hadir';
+  document.getElementById('scanMain').classList.add('hide');
+  document.getElementById('scanManualPanel').classList.remove('hide');
+});
+document.getElementById('btnBatalManual').addEventListener('click', ()=>{
+  document.getElementById('scanManualPanel').classList.add('hide');
+  document.getElementById('scanMain').classList.remove('hide');
+});
+document.getElementById('inpManualNama').addEventListener('input', ()=>{
+  const val = document.getElementById('inpManualNama').value.trim().toLowerCase();
+  const match = siswaCache.find(s=>s.nama.toLowerCase()===val);
+  document.getElementById('inpManualKelas').value = match ? match.kelas : '';
+});
+document.getElementById('btnSimpanManual').addEventListener('click', async ()=>{
+  if(!sb){ toast('Supabase belum dikonfigurasi'); return; }
+  const namaInput = document.getElementById('inpManualNama').value.trim();
+  const siswa = siswaCache.find(s=>s.nama.toLowerCase()===namaInput.toLowerCase());
+  if(!siswa){ toast('Nama tidak ditemukan di data siswa — pilih dari daftar'); return; }
+  const status = document.getElementById('selManualStatus').value;
+  const keterangan = document.getElementById('inpManualKeterangan').value.trim();
+  const sudah = absenCache.find(a=>a.nama===siswa.nama && a.kelas===siswa.kelas && a.tanggal===todayStr());
+  if(sudah){ toast(`${siswa.nama} sudah tercatat absen hari ini (${sudah.status})`); return; }
+  const jam = nowTime();
+  const entry = {nama:siswa.nama, kelas:siswa.kelas, tanggal:todayStr(), jam, status, scanner: scannerDeviceName, jenis:'Masuk', cara:'Manual', keterangan: keterangan||null};
+  absenCache.push(entry);
+  const {error} = await sb.from('absen').insert(entry);
+  if(error){ console.error(error); absenCache.pop(); toast('Gagal simpan — cek koneksi (pastikan migrasi SQL sudah dijalankan)'); return; }
+  logAktivitas('absen_manual', `${siswa.nama} (${siswa.kelas}) dicatat ${status} manual oleh ${scannerDeviceName}`);
+  prependScanHistory(siswa.nama, siswa.kelas, jam, status==='Terlambat');
+  renderScanJumlahHariIni();
+  toast(`Absensi manual ${siswa.nama} tersimpan (${status})`);
+  document.getElementById('scanManualPanel').classList.add('hide');
+  document.getElementById('scanMain').classList.remove('hide');
+});
 
 /* ================= INIT ================= */
 renderHeroBarcode();
