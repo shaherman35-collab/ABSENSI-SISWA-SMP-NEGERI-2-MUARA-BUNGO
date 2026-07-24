@@ -622,13 +622,19 @@ th{color:var(--muted);font-weight:700;font-size:.7rem;text-transform:uppercase;l
         <section class="admin-page hide" id="ap-rekap">
           <div class="card">
             <h2 style="margin:0 0 12px;font-size:1rem;">Rekap Hari Ini (ringkas)</h2>
-            <div class="stat-row" style="grid-template-columns:repeat(3,1fr);">
+            <div class="stat-row" style="grid-template-columns:repeat(6,1fr);">
               <div class="stat-card"><div class="ic-wrap" style="background:#e7f7ee;color:var(--success);">✅</div>
                 <div><div class="num" id="statHadir">0</div><div class="lbl">Hadir</div></div></div>
               <div class="stat-card"><div class="ic-wrap" style="background:#fdf3e2;color:#b8791f;">⏰</div>
                 <div><div class="num" id="statTelat">0</div><div class="lbl">Terlambat</div></div></div>
               <div class="stat-card"><div class="ic-wrap" style="background:var(--danger-bg);color:var(--danger);">❌</div>
                 <div><div class="num" id="statAlpa">0</div><div class="lbl">Belum Absen</div></div></div>
+              <div class="stat-card"><div class="ic-wrap" style="background:#e7ecfb;color:var(--navy-3);">➡️</div>
+                <div><div class="num" id="statMasuk">0</div><div class="lbl">Masuk</div></div></div>
+              <div class="stat-card"><div class="ic-wrap" style="background:#e7ecfb;color:var(--navy-3);">⬅️</div>
+                <div><div class="num" id="statPulang">0</div><div class="lbl">Pulang</div></div></div>
+              <div class="stat-card"><div class="ic-wrap" style="background:#eef2f7;color:#556;">🗓️</div>
+                <div><div class="num" id="statDispensasi">0</div><div class="lbl">Dispensasi</div></div></div>
             </div>
           </div>
 
@@ -681,8 +687,10 @@ th{color:var(--muted);font-weight:700;font-size:.7rem;text-transform:uppercase;l
         <!-- LOG AKTIVITAS -->
         <section class="admin-page hide" id="ap-log">
           <div class="card">
-            <h2 style="margin:0 0 12px;font-size:1rem;">Log Aktivitas</h2>
-            <p style="margin:0 0 14px;font-size:.8rem;color:var(--muted);">Mencatat login/logout, scan, absensi manual, tambah/edit/hapus data, dan persetujuan petugas scanner.</p>
+            <h2 style="margin:0 0 12px;font-size:1rem;">Log Aktivitas
+              <span id="logLiveBadge" class="pill hadir" style="margin-left:8px;font-size:.7rem;vertical-align:middle;">🟢 Live</span>
+            </h2>
+            <p style="margin:0 0 14px;font-size:.8rem;color:var(--muted);">Mencatat login/logout, scan, absensi manual, tambah/edit/hapus data, dan persetujuan petugas scanner. Halaman ini otomatis diperbarui langsung (live) setiap ada scan atau aktivitas baru — tidak perlu refresh.</p>
             <button class="btn btn-outline sm" id="btnRefreshLog" style="margin-bottom:10px;">🔄 Refresh</button>
             <div style="max-height:460px;overflow-y:auto;">
               <table><thead><tr><th>Waktu</th><th>Aktor</th><th>Aksi</th><th>Detail</th></tr></thead><tbody id="tblLog"></tbody></table>
@@ -710,16 +718,9 @@ th{color:var(--muted);font-weight:700;font-size:.7rem;text-transform:uppercase;l
         <!-- PENGATURAN -->
         <section class="admin-page hide" id="ap-pengaturan">
           <div class="card">
-            <h2 style="margin:0 0 14px;font-size:1rem;">Pengaturan</h2>
-            <label class="field">Jam Masuk (batas terlambat)</label>
-            <input type="text" id="inpJamMasuk" placeholder="07:00">
-            <div class="field-gap"></div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-              <div><label class="field">Jendela Absen Masuk — Mulai</label><input type="text" id="inpJamMasukMulai" placeholder="06:00"></div>
-              <div><label class="field">Jendela Absen Masuk — Selesai</label><input type="text" id="inpJamMasukSelesai" placeholder="07:15"></div>
-              <div><label class="field">Jendela Absen Pulang — Mulai</label><input type="text" id="inpJamPulangMulai" placeholder="16:00"></div>
-              <div><label class="field">Jendela Absen Pulang — Selesai</label><input type="text" id="inpJamPulangSelesai" placeholder="18:00"></div>
-            </div>
+            <h2 style="margin:0 0 4px;font-size:1rem;">Pengaturan Jam Masuk &amp; Pulang per Hari</h2>
+            <p style="margin:0 0 14px;font-size:.8rem;color:var(--muted);">Atur jendela absen Masuk dan Pulang untuk setiap hari sekolah (Senin–Jumat). "Batas Terlambat" menentukan kapan status berubah menjadi Terlambat saat absen Masuk.</p>
+            <div id="jadwalHariWrap"></div>
             <div class="field-gap"></div>
             <button class="btn btn-navy" id="btnSimpanPengaturan">Simpan Pengaturan</button>
           </div>
@@ -754,26 +755,46 @@ function toast(msg){
 function todayStr(){ return new Date().toISOString().slice(0,10); }
 function nowTime(){ return new Date().toTimeString().slice(0,5); }
 
-let JAM_MASUK = '07:00';           // batas terlambat (dalam jendela masuk)
-let JAM_MASUK_MULAI = '06:00';
-let JAM_MASUK_SELESAI = '07:15';
-let JAM_PULANG_MULAI = '16:00';
-let JAM_PULANG_SELESAI = '18:00';
+/* ================= JADWAL JAM MASUK/PULANG PER HARI =================
+   Senin–Kamis: Masuk 07:00–07:15, Pulang 15:10–16:00
+   Jumat      : Masuk 07:00–07:15, Pulang 11:00–16:00 */
+const HARI_KEY_URUT = ['senin','selasa','rabu','kamis','jumat'];
+const HARI_KEY_LABEL = {senin:'Senin', selasa:'Selasa', rabu:'Rabu', kamis:'Kamis', jumat:'Jumat'};
+const JADWAL_DEFAULT = {
+  senin:  {batas:'07:00', masuk_mulai:'07:00', masuk_selesai:'07:15', pulang_mulai:'15:10', pulang_selesai:'16:00'},
+  selasa: {batas:'07:00', masuk_mulai:'07:00', masuk_selesai:'07:15', pulang_mulai:'15:10', pulang_selesai:'16:00'},
+  rabu:   {batas:'07:00', masuk_mulai:'07:00', masuk_selesai:'07:15', pulang_mulai:'15:10', pulang_selesai:'16:00'},
+  kamis:  {batas:'07:00', masuk_mulai:'07:00', masuk_selesai:'07:15', pulang_mulai:'15:10', pulang_selesai:'16:00'},
+  jumat:  {batas:'07:00', masuk_mulai:'07:00', masuk_selesai:'07:15', pulang_mulai:'11:00', pulang_selesai:'16:00'},
+};
+let JADWAL_HARI = JSON.parse(JSON.stringify(JADWAL_DEFAULT));
+
+function hariKeyFromDate(d){
+  const idx = d.getDay(); // 0=Minggu ... 6=Sabtu
+  const map = {1:'senin', 2:'selasa', 3:'rabu', 4:'kamis', 5:'jumat'};
+  return map[idx] || null; // null untuk Sabtu/Minggu (bukan hari sekolah)
+}
+function jadwalHariIni(){
+  const key = hariKeyFromDate(new Date());
+  return key ? JADWAL_HARI[key] : null;
+}
+
 async function loadJamMasuk(){
   if(!sb) return;
-  const {data} = await sb.from('settings').select('key,value').in('key',['jam_masuk','jam_masuk_mulai','jam_masuk_selesai','jam_pulang_mulai','jam_pulang_selesai']);
+  const keys = [];
+  HARI_KEY_URUT.forEach(h=>{ keys.push(`jadwal_${h}_batas`,`jadwal_${h}_masuk_mulai`,`jadwal_${h}_masuk_selesai`,`jadwal_${h}_pulang_mulai`,`jadwal_${h}_pulang_selesai`); });
+  const {data} = await sb.from('settings').select('key,value').in('key', keys);
   (data||[]).forEach(r=>{
-    if(r.key==='jam_masuk' && r.value) JAM_MASUK = r.value;
-    if(r.key==='jam_masuk_mulai' && r.value) JAM_MASUK_MULAI = r.value;
-    if(r.key==='jam_masuk_selesai' && r.value) JAM_MASUK_SELESAI = r.value;
-    if(r.key==='jam_pulang_mulai' && r.value) JAM_PULANG_MULAI = r.value;
-    if(r.key==='jam_pulang_selesai' && r.value) JAM_PULANG_SELESAI = r.value;
+    const m = r.key.match(/^jadwal_(senin|selasa|rabu|kamis|jumat)_(batas|masuk_mulai|masuk_selesai|pulang_mulai|pulang_selesai)$/);
+    if(m && r.value){ JADWAL_HARI[m[1]][m[2]] = r.value; }
   });
 }
-/* Tentukan jenis absensi (Masuk/Pulang) berdasarkan jam saat ini. null = di luar jam absensi. */
+/* Tentukan jenis absensi (Masuk/Pulang) berdasarkan jam & hari saat ini. null = di luar jam absensi / bukan hari sekolah. */
 function tentukanJenisAbsen(jam){
-  if(jam >= JAM_MASUK_MULAI && jam <= JAM_MASUK_SELESAI) return 'Masuk';
-  if(jam >= JAM_PULANG_MULAI && jam <= JAM_PULANG_SELESAI) return 'Pulang';
+  const j = jadwalHariIni();
+  if(!j) return null;
+  if(jam >= j.masuk_mulai && jam <= j.masuk_selesai) return 'Masuk';
+  if(jam >= j.pulang_mulai && jam <= j.pulang_selesai) return 'Pulang';
   return null;
 }
 
@@ -963,6 +984,31 @@ function subscribeRealtime(){
       renderScannerPage(); renderDashboard();
     }
   }).subscribe();
+
+  /* Log Aktivitas LIVE — begitu ada scan/aktivitas baru, admin langsung tahu
+     tanpa perlu refresh, di halaman manapun ia sedang berada. */
+  sb.channel('log-aktivitas-changes').on('postgres_changes', {event:'INSERT', schema:'public', table:'log_aktivitas'}, (payload)=>{
+    const l = payload.new;
+    if(!document.getElementById('view-admin').classList.contains('hide')){
+      // Notifikasi ringan untuk admin di halaman manapun
+      const label = l.aksi==='scan' ? '📷 Scan baru' : (l.aksi==='absen_manual' ? '📝 Absen manual' : '🔔 Aktivitas baru');
+      toast(`${label}: ${l.detail||''}`);
+      // Kalau sedang membuka halaman Log Aktivitas, langsung tambahkan barisnya di atas tabel
+      const logSection = document.getElementById('ap-log');
+      if(logSection && !logSection.classList.contains('hide')){
+        const tbody = document.getElementById('tblLog');
+        if(tbody){
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td>${new Date(l.waktu).toLocaleString('id-ID')}</td><td>${l.aktor||'-'}</td><td>${l.aksi||'-'}</td><td>${l.detail||''}</td>`;
+          tr.style.background = 'var(--success-bg, #e7f7ee)';
+          tbody.insertBefore(tr, tbody.firstChild);
+          setTimeout(()=>{ tr.style.transition = 'background 1.2s'; tr.style.background = ''; }, 50);
+        }
+      }
+      // Kalau sedang di halaman Dashboard/Rekap, refresh angka-angkanya juga
+      if(l.aksi==='scan' || l.aksi==='absen_manual'){ renderDashboard(); renderRekapHariIni(); }
+    }
+  }).subscribe();
 }
 
 /* ================= ADMIN SIDEBAR ROUTER ================= */
@@ -987,13 +1033,7 @@ function showAdminPage(name){
   }
   if(name==='log') renderLogAktivitas();
   if(name==='cetak') refreshKelasSelect();
-  if(name==='pengaturan'){
-    document.getElementById('inpJamMasuk').value = JAM_MASUK;
-    document.getElementById('inpJamMasukMulai').value = JAM_MASUK_MULAI;
-    document.getElementById('inpJamMasukSelesai').value = JAM_MASUK_SELESAI;
-    document.getElementById('inpJamPulangMulai').value = JAM_PULANG_MULAI;
-    document.getElementById('inpJamPulangSelesai').value = JAM_PULANG_SELESAI;
-  }
+  if(name==='pengaturan') renderJadwalPengaturan();
 }
 document.querySelectorAll('.admin-nav button').forEach(btn=>{
   btn.addEventListener('click', ()=>{ showAdminPage(btn.dataset.p); closeAdminSidebar(); });
@@ -1205,9 +1245,15 @@ function renderRekapHariIni(){
   const telat = absenHariIni.filter(a=>a.status==='Terlambat').length;
   const totalAbsen = siswaAll.filter(s=>absenHariIni.some(a=>a.nama===s.nama && a.kelas===s.kelas)).length;
   const alpa = siswaAll.length - totalAbsen;
+  const masuk = absenHariIni.filter(a=>(a.jenis||'Masuk')==='Masuk').length;
+  const pulang = absenHariIni.filter(a=>a.jenis==='Pulang').length;
+  const dispensasi = absenHariIni.filter(a=>a.status==='Dispensasi').length;
   document.getElementById('statHadir').textContent = hadir;
   document.getElementById('statTelat').textContent = telat;
   document.getElementById('statAlpa').textContent = alpa;
+  document.getElementById('statMasuk').textContent = masuk;
+  document.getElementById('statPulang').textContent = pulang;
+  document.getElementById('statDispensasi').textContent = dispensasi;
 }
 
 /* ================= REKAP MULTI-PERIODE ================= */
@@ -1332,25 +1378,57 @@ async function renderArsipRekap(){
     </div>`).join('') : '<div class="empty">Belum ada arsip rekap</div>';
 }
 
-/* ================= PENGATURAN ================= */
+/* ================= PENGATURAN (JADWAL PER HARI) ================= */
+function renderJadwalPengaturan(){
+  const wrap = document.getElementById('jadwalHariWrap');
+  wrap.innerHTML = HARI_KEY_URUT.map(h=>{
+    const j = JADWAL_HARI[h];
+    return `
+    <div class="card" style="background:var(--bg-2,rgba(0,0,0,.02));margin-bottom:12px;">
+      <h3 style="margin:0 0 10px;font-size:.9rem;color:var(--navy);">${HARI_KEY_LABEL[h]}</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+        <div><label class="field">Batas Terlambat</label><input type="text" class="jdw-batas" data-hari="${h}" value="${j.batas}" placeholder="07:00"></div>
+        <div><label class="field">Masuk — Mulai</label><input type="text" class="jdw-masuk-mulai" data-hari="${h}" value="${j.masuk_mulai}" placeholder="07:00"></div>
+        <div><label class="field">Masuk — Selesai</label><input type="text" class="jdw-masuk-selesai" data-hari="${h}" value="${j.masuk_selesai}" placeholder="07:15"></div>
+        <div><label class="field">Pulang — Mulai</label><input type="text" class="jdw-pulang-mulai" data-hari="${h}" value="${j.pulang_mulai}" placeholder="15:10"></div>
+        <div><label class="field">Pulang — Selesai</label><input type="text" class="jdw-pulang-selesai" data-hari="${h}" value="${j.pulang_selesai}" placeholder="16:00"></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
 document.getElementById('btnSimpanPengaturan').addEventListener('click', async ()=>{
   if(!sb){ toast('Supabase belum dikonfigurasi'); return; }
-  const vals = {
-    jam_masuk: document.getElementById('inpJamMasuk').value.trim(),
-    jam_masuk_mulai: document.getElementById('inpJamMasukMulai').value.trim(),
-    jam_masuk_selesai: document.getElementById('inpJamMasukSelesai').value.trim(),
-    jam_pulang_mulai: document.getElementById('inpJamPulangMulai').value.trim(),
-    jam_pulang_selesai: document.getElementById('inpJamPulangSelesai').value.trim(),
-  };
-  for(const k in vals){ if(!/^\d{2}:\d{2}$/.test(vals[k])){ toast('Format jam salah, contoh: 07:00'); return; } }
-  const rows = Object.entries(vals).map(([key,value])=>({key,value}));
+  const rows = [];
+  const newJadwal = {};
+  let formatOk = true;
+  HARI_KEY_URUT.forEach(h=>{
+    const batas = wrap_val('jdw-batas', h);
+    const masuk_mulai = wrap_val('jdw-masuk-mulai', h);
+    const masuk_selesai = wrap_val('jdw-masuk-selesai', h);
+    const pulang_mulai = wrap_val('jdw-pulang-mulai', h);
+    const pulang_selesai = wrap_val('jdw-pulang-selesai', h);
+    [batas, masuk_mulai, masuk_selesai, pulang_mulai, pulang_selesai].forEach(v=>{
+      if(!/^\d{2}:\d{2}$/.test(v)) formatOk = false;
+    });
+    newJadwal[h] = {batas, masuk_mulai, masuk_selesai, pulang_mulai, pulang_selesai};
+    rows.push({key:`jadwal_${h}_batas`, value:batas});
+    rows.push({key:`jadwal_${h}_masuk_mulai`, value:masuk_mulai});
+    rows.push({key:`jadwal_${h}_masuk_selesai`, value:masuk_selesai});
+    rows.push({key:`jadwal_${h}_pulang_mulai`, value:pulang_mulai});
+    rows.push({key:`jadwal_${h}_pulang_selesai`, value:pulang_selesai});
+  });
+  if(!formatOk){ toast('Format jam salah, contoh: 07:00'); return; }
   const {error} = await sb.from('settings').upsert(rows);
   if(error){ console.error(error); toast('Gagal menyimpan pengaturan'); return; }
-  JAM_MASUK = vals.jam_masuk; JAM_MASUK_MULAI = vals.jam_masuk_mulai; JAM_MASUK_SELESAI = vals.jam_masuk_selesai;
-  JAM_PULANG_MULAI = vals.jam_pulang_mulai; JAM_PULANG_SELESAI = vals.jam_pulang_selesai;
-  await logAktivitas('pengaturan', 'Mengubah jendela jam absensi');
-  toast('Pengaturan disimpan untuk semua perangkat');
+  JADWAL_HARI = newJadwal;
+  await logAktivitas('pengaturan', 'Mengubah jadwal jam absensi per hari');
+  toast('Pengaturan jadwal disimpan untuk semua perangkat');
 });
+function wrap_val(cls, hari){
+  const el = document.querySelector(`.${cls}[data-hari="${hari}"]`);
+  return el ? el.value.trim() : '';
+}
 
 /* ================= QR CODE HELPER =================
    Ganti dari CODE128 (JsBarcode) ke QR Code (qrcode-generator).
@@ -1711,9 +1789,14 @@ async function onScanSuccess(decodedText){
   }
 
   const jam = nowTime();
+  const jadwalHari = jadwalHariIni();
+  if(!jadwalHari){
+    showScanResult(false, `Hari ini bukan hari sekolah (jadwal hanya Senin–Jumat)`);
+    beep(false); return;
+  }
   const jenis = tentukanJenisAbsen(jam);
   if(!jenis){
-    showScanResult(false, `Di luar jam absensi (Masuk ${JAM_MASUK_MULAI}-${JAM_MASUK_SELESAI}, Pulang ${JAM_PULANG_MULAI}-${JAM_PULANG_SELESAI})`);
+    showScanResult(false, `Di luar jam absensi ${HARI_KEY_LABEL[hariKeyFromDate(new Date())]} (Masuk ${jadwalHari.masuk_mulai}-${jadwalHari.masuk_selesai}, Pulang ${jadwalHari.pulang_mulai}-${jadwalHari.pulang_selesai})`);
     beep(false); return;
   }
   const sudah = absenCache.find(a=>a.nama===siswa.nama && a.kelas===siswa.kelas && a.tanggal===todayStr() && (a.jenis||'Masuk')===jenis);
@@ -1722,7 +1805,7 @@ async function onScanSuccess(decodedText){
     beep(false); return;
   }
 
-  const telat = jenis==='Masuk' && jam > JAM_MASUK;
+  const telat = jenis==='Masuk' && jam > jadwalHari.batas;
   const entry = {nama:siswa.nama, kelas:siswa.kelas, tanggal:todayStr(), jam, status: telat?'Terlambat':'Hadir', scanner: scannerDeviceName, jenis, cara:'QR'};
   absenCache.push(entry);
   const {error} = await sb.from('absen').insert(entry);
