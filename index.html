@@ -294,6 +294,7 @@ th{color:var(--muted);font-weight:700;font-size:.7rem;text-transform:uppercase;l
 .idc-head .t1{font-weight:800;font-size:4.6mm;letter-spacing:.2px;color:var(--navy);line-height:1.05;}
 .idc-head .t2{font-weight:700;font-size:2.3mm;color:var(--royal);margin-top:.3mm;}
 .idc-yearpill{position:absolute;top:9.4mm;left:50%;transform:translateX(-50%);background:var(--navy);color:var(--gold);font-weight:700;font-size:1.9mm;padding:.9mm 3.2mm;border-radius:10mm;letter-spacing:.3px;z-index:2;white-space:nowrap;}
+.idc-custom-text{position:absolute;left:0;top:0;z-index:5;white-space:pre-wrap;font-family:'Poppins','Montserrat',Arial,sans-serif;pointer-events:none;}
 .idc-body{position:absolute;top:14.5mm;left:2.6mm;right:2.6mm;bottom:6mm;display:flex;z-index:2;}
 .idc-fields{flex:1;padding-top:1.5mm;}
 .idc-field{display:flex;align-items:center;gap:1.3mm;font-size:2.5mm;font-weight:700;color:var(--navy);margin-bottom:2.6mm;}
@@ -316,6 +317,13 @@ textarea{resize:vertical;min-height:70px;line-height:1.5;}
 .design-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-bottom:10px;}
 .design-row:last-child{margin-bottom:0;}
 .design-note{font-size:.7rem;color:var(--muted);margin:-4px 0 10px;}
+input[type=color]{width:44px;height:38px;padding:2px;border:1.5px solid var(--line);border-radius:9px;cursor:pointer;}
+.design-row-inline{display:flex;align-items:center;gap:8px;}
+.design-row-inline label.field{margin:0;}
+.custom-text-row{border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px;position:relative;}
+.custom-text-row .ctr-full{grid-column:1/-1;}
+.custom-text-row .ctr-remove{position:absolute;top:6px;right:6px;background:var(--danger-bg);color:var(--danger);border:none;
+  border-radius:6px;width:22px;height:22px;font-weight:800;cursor:pointer;font-size:.75rem;line-height:1;}
 .locked-field{background:#eef1f6;border:1.5px dashed var(--line);border-radius:9px;padding:9px 12px;
   font-size:.8rem;color:var(--muted);display:flex;align-items:center;gap:6px;}
 .logo-upload-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
@@ -331,11 +339,11 @@ textarea{resize:vertical;min-height:70px;line-height:1.5;}
 .idc-back .idc-back-body{position:absolute;top:2.3mm;left:2.8mm;right:2.8mm;bottom:9.4mm;display:flex;gap:2.4mm;z-index:2;}
 .idc-rules{flex:1.05;border:.35mm solid var(--navy);border-radius:1.8mm;padding:1.4mm 1.8mm;background:#fff;}
 .idc-rules-title{background:var(--navy);color:#fff;font-size:1.7mm;font-weight:700;text-align:center;border-radius:5mm;padding:.5mm 1mm;margin-bottom:1mm;letter-spacing:.2px;}
-.idc-rule{display:flex;gap:1mm;font-size:1.55mm;line-height:1.35;color:#1a2a52;margin-bottom:.9mm;}
+.idc-rule{display:flex;gap:1mm;font-size:var(--rules-fs,1.55mm);line-height:1.35;color:var(--rules-color,#1a2a52);margin-bottom:.9mm;}
 .idc-rule .num{flex-shrink:0;width:3mm;height:3mm;border-radius:50%;background:var(--navy);color:#fff;font-size:1.5mm;font-weight:800;display:flex;align-items:center;justify-content:center;}
 .idc-motto{flex:1;display:flex;flex-direction:column;}
 .idc-motto-title{background:var(--navy);color:#fff;font-size:1.7mm;font-weight:700;text-align:center;border-radius:5mm;padding:.5mm 1mm;margin-bottom:1mm;}
-.idc-motto-line{text-align:center;font-weight:800;font-size:2mm;line-height:1.25;}
+.idc-motto-line{text-align:center;font-weight:800;font-size:var(--motto-fs,2mm);line-height:1.25;}
 .idc-motto-line.red{color:#c62828;}
 .idc-motto-line.navy{color:var(--navy);}
 .idc-contact-title{background:var(--navy);color:#fff;font-size:1.6mm;font-weight:700;text-align:center;border-radius:5mm;padding:.4mm 1mm;margin:1.4mm 0 .8mm;}
@@ -809,6 +817,18 @@ textarea{resize:vertical;min-height:70px;line-height:1.5;}
             <div id="designFormCol">
 
               <div class="design-section">
+                <h3>🎨 Tema Warna Kartu</h3>
+                <label class="field">Pilih Tema</label>
+                <select id="selKartuTema"></select>
+                <div class="design-note">Tema mengubah warna utama (kop, garis, footer) di sisi depan &amp; belakang kartu. Pilih "Kustom" untuk mengatur warna sendiri.</div>
+                <div class="design-row" id="wrapTemaKustom" style="grid-template-columns:1fr 1fr 1fr;">
+                  <div class="design-row-inline"><label class="field">Warna Utama</label><input type="color" id="inpTemaNavy"></div>
+                  <div class="design-row-inline"><label class="field">Warna Kedua</label><input type="color" id="inpTemaRoyal"></div>
+                  <div class="design-row-inline"><label class="field">Warna Aksen</label><input type="color" id="inpTemaGold"></div>
+                </div>
+              </div>
+
+              <div class="design-section">
                 <h3>🖼️ Logo Kiri &amp; Kanan</h3>
                 <div class="design-row" style="grid-template-columns:1fr 1fr;">
                   <div>
@@ -851,11 +871,19 @@ textarea{resize:vertical;min-height:70px;line-height:1.5;}
                   <div><label class="field">Judul Kartu</label><input type="text" id="inpJudulKartu"></div>
                   <div><label class="field">Nama Sekolah</label><input type="text" id="inpNamaSekolah"></div>
                 </div>
-                <div class="design-note">Geser posisi teks nama sekolah (mm) dan atur ukuran hurufnya.</div>
-                <div class="design-row">
+                <div class="design-note">Geser posisi (mm), ukuran, dan warna teks Judul Kartu.</div>
+                <div class="design-row" style="grid-template-columns:1fr 1fr 1fr 1fr;">
+                  <div><label class="field">Judul: Geser X</label><input type="number" step="0.5" id="inpJudulX"></div>
+                  <div><label class="field">Judul: Geser Y</label><input type="number" step="0.5" id="inpJudulY"></div>
+                  <div><label class="field">Judul: Ukuran</label><input type="number" step="0.1" min="2" max="8" id="inpJudulSize"></div>
+                  <div class="design-row-inline"><label class="field">Judul: Warna</label><input type="color" id="inpJudulColor"></div>
+                </div>
+                <div class="design-note">Geser posisi teks nama sekolah (mm), atur ukuran &amp; warnanya.</div>
+                <div class="design-row" style="grid-template-columns:1fr 1fr 1fr 1fr;">
                   <div><label class="field">Nama Sekolah: Geser X</label><input type="number" step="0.5" id="inpNamaSekolahX"></div>
                   <div><label class="field">Nama Sekolah: Geser Y</label><input type="number" step="0.5" id="inpNamaSekolahY"></div>
                   <div><label class="field">Nama Sekolah: Ukuran</label><input type="number" step="0.1" min="1.5" max="4" id="inpNamaSekolahSize"></div>
+                  <div class="design-row-inline"><label class="field">Nama Sekolah: Warna</label><input type="color" id="inpNamaSekolahColor"></div>
                 </div>
                 <div class="design-row" style="grid-template-columns:1fr 1fr;">
                   <div><label class="field">Label Capsule Tahun Ajaran</label><input type="text" id="inpLabelTahun"></div>
@@ -870,6 +898,13 @@ textarea{resize:vertical;min-height:70px;line-height:1.5;}
                 </div>
                 <label class="field">4 Poin Ketentuan (satu baris = satu poin)</label>
                 <textarea id="inpBackRules" rows="4"></textarea>
+                <div class="design-note">Geser posisi seluruh kotak Ketentuan (mm), ukuran teks, dan warnanya.</div>
+                <div class="design-row" style="grid-template-columns:1fr 1fr 1fr 1fr;">
+                  <div><label class="field">Ketentuan: Geser X</label><input type="number" step="0.5" id="inpBackRulesX"></div>
+                  <div><label class="field">Ketentuan: Geser Y</label><input type="number" step="0.5" id="inpBackRulesY"></div>
+                  <div><label class="field">Ketentuan: Ukuran</label><input type="number" step="0.05" min="1" max="3" id="inpBackRulesSize"></div>
+                  <div class="design-row-inline"><label class="field">Ketentuan: Warna</label><input type="color" id="inpBackRulesColor"></div>
+                </div>
                 <div class="field-gap"></div>
                 <div class="design-row" style="grid-template-columns:1fr;">
                   <div><label class="field">Judul Motto</label><input type="text" id="inpBackMottoTitle"></div>
@@ -877,6 +912,16 @@ textarea{resize:vertical;min-height:70px;line-height:1.5;}
                 <div class="design-row" style="grid-template-columns:1fr 1fr;">
                   <div><label class="field">Motto Baris 1</label><input type="text" id="inpBackMotto1"></div>
                   <div><label class="field">Motto Baris 2</label><input type="text" id="inpBackMotto2"></div>
+                </div>
+                <div class="design-note">Geser posisi seluruh kotak Motto (mm), ukuran teks, dan warna tiap barisnya.</div>
+                <div class="design-row" style="grid-template-columns:1fr 1fr 1fr;">
+                  <div><label class="field">Motto: Geser X</label><input type="number" step="0.5" id="inpBackMottoX"></div>
+                  <div><label class="field">Motto: Geser Y</label><input type="number" step="0.5" id="inpBackMottoY"></div>
+                  <div><label class="field">Motto: Ukuran</label><input type="number" step="0.1" min="1" max="4" id="inpBackMottoSize"></div>
+                </div>
+                <div class="design-row" style="grid-template-columns:1fr 1fr;">
+                  <div class="design-row-inline"><label class="field">Warna Motto Baris 1</label><input type="color" id="inpBackMotto1Color"></div>
+                  <div class="design-row-inline"><label class="field">Warna Motto Baris 2</label><input type="color" id="inpBackMotto2Color"></div>
                 </div>
               </div>
 
@@ -897,6 +942,13 @@ textarea{resize:vertical;min-height:70px;line-height:1.5;}
                 <div class="design-row" style="grid-template-columns:1fr;">
                   <div><label class="field">Baris Kredit (Footer Belakang)</label><input type="text" id="inpBackFooterKredit"></div>
                 </div>
+              </div>
+
+              <div class="design-section">
+                <h3>➕ Teks Tambahan (Bebas Ditempel)</h3>
+                <p class="design-note" style="margin-bottom:10px;">Tambahkan tulisan bebas di sisi depan atau belakang kartu — misalnya nama kepala sekolah, tahun berdiri, atau catatan khusus. Bisa digeser posisinya, diubah ukuran &amp; warnanya.</p>
+                <div id="wrapCustomTexts"></div>
+                <button type="button" class="btn btn-outline sm" id="btnTambahTeks">➕ Tambah Teks</button>
               </div>
 
               <div class="design-section">
@@ -1763,29 +1815,41 @@ function idcEmblemSVG(){
   </svg>`;
 }
 
+/* Render lapisan teks tambahan (bebas ditempel admin) untuk sisi 'depan' atau 'belakang' */
+function idcCustomTextsHTML(d, side){
+  return (d.customTexts||[]).filter(c=>c.side===side && c.text).map(c=>{
+    const style = `transform:translate(${c.x||0}mm,${c.y||0}mm);font-size:${c.size||3}mm;color:${c.color||'#082B73'};font-weight:700;`;
+    return `<div class="idc-custom-text" style="${style}">${c.text}</div>`;
+  }).join('');
+}
+
 /* Sisi belakang kartu — teks diatur lewat KARTU_DESAIN (menu Desain Kartu) */
 function idcBackHTML(d){
   d = d || KARTU_DESAIN;
+  const theme = getThemeColors(d);
   const rules = (d.backRules||[]).map((r,i)=>`<div class="idc-rule"><span class="num">${i+1}</span>${r}</div>`).join('');
   const contact = (d.backContact||[]).map(c=>`<div>${c}</div>`).join('');
-  return `<div class="idc-back">
+  const rulesStyle = `transform:translate(${d.backRulesX||0}mm,${d.backRulesY||0}mm);--rules-fs:${d.backRulesSize||1.55}mm;--rules-color:${d.backRulesColor||'#1a2a52'};`;
+  const mottoStyle = `transform:translate(${d.backMottoX||0}mm,${d.backMottoY||0}mm);--motto-fs:${d.backMottoSize||2}mm;`;
+  return `<div class="idc-back" style="--navy:${theme.navy};--royal:${theme.royal};--gold:${theme.gold};">
     <div class="idc-dots tl"></div>
     <div class="idc-dots br"></div>
     <div class="idc-back-body">
-      <div class="idc-rules">
+      <div class="idc-rules" style="${rulesStyle}">
         <div class="idc-rules-title">${d.backRulesTitle}</div>
         ${rules}
       </div>
-      <div class="idc-motto">
+      <div class="idc-motto" style="${mottoStyle}">
         <div class="idc-motto-title">${d.backMottoTitle}</div>
-        <div class="idc-motto-line red">${d.backMotto1}</div>
-        <div class="idc-motto-line navy">${d.backMotto2}</div>
+        <div class="idc-motto-line" style="color:${d.backMotto1Color||'#c62828'};">${d.backMotto1}</div>
+        <div class="idc-motto-line" style="color:${d.backMotto2Color||theme.navy};">${d.backMotto2}</div>
         <div class="idc-contact-title">${d.backContactTitle}</div>
         <div class="idc-contact">
           ${contact}
         </div>
       </div>
     </div>
+    ${idcCustomTextsHTML(d,'belakang')}
     <div class="idc-back-footer">
       <div class="bf-name">${d.backFooterNama}</div>
       <div class="bf-addr">${d.backFooterAlamat}</div>
@@ -1801,12 +1865,32 @@ function logoKiriDefaultSrc(){
   const el = document.querySelector('.sb-brand .logo-dot img');
   return el ? el.src : '';
 }
+/* Preset tema warna kartu. Kunci "custom" berarti admin mengatur warna sendiri lewat color picker. */
+const KARTU_THEMES = {
+  navygold:  {label:'Navy Emas (Bawaan)', navy:'#082B73', royal:'#1247A6', gold:'#FDB813'},
+  merah:     {label:'Merah Marun',        navy:'#7A1620', royal:'#A3222F', gold:'#F2C14E'},
+  hijau:     {label:'Hijau Zamrud',       navy:'#0B4A3A', royal:'#12704F', gold:'#E8C14E'},
+  ungu:      {label:'Ungu Elegan',        navy:'#3B1F6B', royal:'#5A34A1', gold:'#F2B84B'},
+  hitam:     {label:'Hitam Elegan',       navy:'#161616', royal:'#333333', gold:'#D4AF37'},
+  birucerah: {label:'Biru Cerah',         navy:'#0B3D91', royal:'#1E6FD9', gold:'#FFD166'},
+  custom:    {label:'Kustom (atur warna sendiri)'}
+};
+/* Mengambil warna aktif (navy/royal/gold) berdasarkan tema yang dipilih di objek desain `d` */
+function getThemeColors(d){
+  if(d.theme === 'custom'){
+    return { navy: d.themeNavy || '#082B73', royal: d.themeRoyal || '#1247A6', gold: d.themeGold || '#FDB813' };
+  }
+  const preset = KARTU_THEMES[d.theme] || KARTU_THEMES.navygold;
+  return { navy: preset.navy, royal: preset.royal, gold: preset.gold };
+}
 const DEFAULT_KARTU_DESAIN = {
+  theme: 'navygold', themeNavy:'#082B73', themeRoyal:'#1247A6', themeGold:'#FDB813',
   logoKiri: null, logoKiriX: 0, logoKiriY: 0, logoKiriSize: 9.5,
   logoKanan: null, logoKananX: 0, logoKananY: 0, logoKananSize: 8.6,
   judul: 'KARTU PELAJAR',
+  judulX: 0, judulY: 0, judulSize: 4.6, judulColor: '#082B73',
   namaSekolah: 'SMP NEGERI 2 MUARA BUNGO',
-  namaSekolahX: 0, namaSekolahY: 0, namaSekolahSize: 2.3,
+  namaSekolahX: 0, namaSekolahY: 0, namaSekolahSize: 2.3, namaSekolahColor: '#1247A6',
   labelTahun: 'TAHUN PELAJARAN',
   footerSlogan: '🛡️ Disiplin hari ini, prestasi esok hari.',
   backRulesTitle: 'KETENTUAN PENGGUNAAN',
@@ -1816,9 +1900,11 @@ const DEFAULT_KARTU_DESAIN = {
     'Kartu tidak boleh dipinjamkan kepada orang lain.',
     'Apabila hilang segera laporkan kepada pihak sekolah.'
   ],
+  backRulesX: 0, backRulesY: 0, backRulesSize: 1.55, backRulesColor: '#1a2a52',
   backMottoTitle: '✦ MOTTO SEKOLAH ✦',
   backMotto1: 'MELANGKAH SERENTAK MAJU',
   backMotto2: 'MENGAYUN SERENTAK MENANG',
+  backMottoX: 0, backMottoY: 0, backMottoSize: 2, backMotto1Color: '#c62828', backMotto2Color: '#082B73',
   backContactTitle: 'HUBUNGI KAMI',
   backContact: [
     '🌐 smpn2bungo.com',
@@ -1829,7 +1915,8 @@ const DEFAULT_KARTU_DESAIN = {
   ],
   backFooterNama: 'SMP NEGERI 2 MUARA BUNGO',
   backFooterAlamat: 'Jl. Lintas Sumatera KM.7, Muara Bungo, Kabupaten Bungo, Provinsi Jambi',
-  backFooterKredit: '@DIGITAL IDENTITY CARD • DESIGNED & DEVELOPED BY IT TEAM • SMP NEGERI 2 MUARA BUNGO'
+  backFooterKredit: '@DIGITAL IDENTITY CARD • DESIGNED & DEVELOPED BY IT TEAM • SMP NEGERI 2 MUARA BUNGO',
+  customTexts: []
 };
 let KARTU_DESAIN = JSON.parse(JSON.stringify(DEFAULT_KARTU_DESAIN));
 
@@ -1860,14 +1947,16 @@ function idcLogoKananHTML(d){
 /* Sisi depan kartu. `s`={nama,kelas} data siswa (terkunci), `qrInner` = konten kotak QR/Barcode (terkunci) */
 function idcFrontHTML(s, qrInner, d){
   d = d || KARTU_DESAIN;
-  const namaSekolahStyle = `transform:translate(${d.namaSekolahX||0}mm,${d.namaSekolahY||0}mm);font-size:${d.namaSekolahSize||2.3}mm;`;
-  return `<div class="idc-front">
+  const theme = getThemeColors(d);
+  const judulStyle = `transform:translate(${d.judulX||0}mm,${d.judulY||0}mm);font-size:${d.judulSize||4.6}mm;color:${d.judulColor||theme.navy};`;
+  const namaSekolahStyle = `transform:translate(${d.namaSekolahX||0}mm,${d.namaSekolahY||0}mm);font-size:${d.namaSekolahSize||2.3}mm;color:${d.namaSekolahColor||theme.royal};`;
+  return `<div class="idc-front" style="--navy:${theme.navy};--royal:${theme.royal};--gold:${theme.gold};">
         <div class="idc-dots tl"></div>
         <div class="idc-dots br"></div>
         <div class="idc-wave-top"></div>
         ${idcLogoKiriHTML(d)}
         ${idcLogoKananHTML(d)}
-        <div class="idc-head"><div class="t1">${d.judul}</div><div class="t2" style="${namaSekolahStyle}">${d.namaSekolah}</div></div>
+        <div class="idc-head"><div class="t1" style="${judulStyle}">${d.judul}</div><div class="t2" style="${namaSekolahStyle}">${d.namaSekolah}</div></div>
         <div class="idc-yearpill">${d.labelTahun} ${tahunAjaran()}</div>
         <div class="idc-body">
           <div class="idc-fields">
@@ -1876,6 +1965,7 @@ function idcFrontHTML(s, qrInner, d){
           </div>
           <div class="idc-qrbox">${qrInner}<div class="lbl">BARCODE / QR CODE</div></div>
         </div>
+        ${idcCustomTextsHTML(d,'depan')}
         <div class="idc-wave-bottom"></div>
         <div class="idc-footer">${d.footerSlogan}</div>
       </div>`;
@@ -1889,42 +1979,129 @@ function renderLogoPreviewThumbs(){
   if(pkn) pkn.innerHTML = KARTU_DESAIN.logoKanan ? `<img src="${KARTU_DESAIN.logoKanan}" alt="Logo Kanan">` : idcEmblemSVG();
 }
 
+/* Isi dropdown pilihan tema (sekali saja) */
+function isiSelectTema(){
+  const sel = document.getElementById('selKartuTema');
+  if(!sel || sel.dataset.filled) return;
+  sel.innerHTML = Object.keys(KARTU_THEMES).map(k=>`<option value="${k}">${KARTU_THEMES[k].label}</option>`).join('');
+  sel.dataset.filled = '1';
+}
+function toggleTemaKustomWrap(){
+  const wrap = document.getElementById('wrapTemaKustom');
+  const sel = document.getElementById('selKartuTema');
+  if(wrap && sel) wrap.style.display = (sel.value === 'custom') ? 'grid' : 'none';
+}
+
 function isiFormDesain(){
   const d = KARTU_DESAIN;
   const set = (id,val)=>{ const el=document.getElementById(id); if(el) el.value = val; };
+  isiSelectTema();
+  set('selKartuTema', d.theme || 'navygold');
+  set('inpTemaNavy', d.themeNavy || '#082B73'); set('inpTemaRoyal', d.themeRoyal || '#1247A6'); set('inpTemaGold', d.themeGold || '#FDB813');
+  toggleTemaKustomWrap();
   set('inpLogoKiriX', d.logoKiriX||0); set('inpLogoKiriY', d.logoKiriY||0); set('inpLogoKiriSize', d.logoKiriSize||9.5);
   set('inpLogoKananX', d.logoKananX||0); set('inpLogoKananY', d.logoKananY||0); set('inpLogoKananSize', d.logoKananSize||8.6);
-  set('inpJudulKartu', d.judul||''); set('inpNamaSekolah', d.namaSekolah||'');
+  set('inpJudulKartu', d.judul||'');
+  set('inpJudulX', d.judulX||0); set('inpJudulY', d.judulY||0); set('inpJudulSize', d.judulSize||4.6); set('inpJudulColor', d.judulColor||'#082B73');
+  set('inpNamaSekolah', d.namaSekolah||'');
   set('inpNamaSekolahX', d.namaSekolahX||0); set('inpNamaSekolahY', d.namaSekolahY||0); set('inpNamaSekolahSize', d.namaSekolahSize||2.3);
+  set('inpNamaSekolahColor', d.namaSekolahColor||'#1247A6');
   set('inpLabelTahun', d.labelTahun||''); set('inpFooterSlogan', d.footerSlogan||'');
   set('inpBackRulesTitle', d.backRulesTitle||''); set('inpBackRules', (d.backRules||[]).join('\n'));
+  set('inpBackRulesX', d.backRulesX||0); set('inpBackRulesY', d.backRulesY||0); set('inpBackRulesSize', d.backRulesSize||1.55);
+  set('inpBackRulesColor', d.backRulesColor||'#1a2a52');
   set('inpBackMottoTitle', d.backMottoTitle||''); set('inpBackMotto1', d.backMotto1||''); set('inpBackMotto2', d.backMotto2||'');
+  set('inpBackMottoX', d.backMottoX||0); set('inpBackMottoY', d.backMottoY||0); set('inpBackMottoSize', d.backMottoSize||2);
+  set('inpBackMotto1Color', d.backMotto1Color||'#c62828'); set('inpBackMotto2Color', d.backMotto2Color||'#082B73');
   set('inpBackContactTitle', d.backContactTitle||''); set('inpBackContact', (d.backContact||[]).join('\n'));
   set('inpBackFooterNama', d.backFooterNama||''); set('inpBackFooterAlamat', d.backFooterAlamat||''); set('inpBackFooterKredit', d.backFooterKredit||'');
+  renderCustomTextRows(d.customTexts||[]);
   renderLogoPreviewThumbs();
 }
+
+/* ---------- Teks Tambahan (custom, bisa ditempel bebas) ---------- */
+function customTextRowHTML(c, i){
+  c = c || {};
+  return `<div class="custom-text-row" data-idx="${i}">
+    <button type="button" class="ctr-remove btn-hapus-teks" data-idx="${i}" title="Hapus">✕</button>
+    <div class="ctr-full"><label class="field">Teks</label><input type="text" class="ctx-text" value="${(c.text||'').replace(/"/g,'&quot;')}" placeholder="Contoh: Kepala Sekolah: Budi Santoso"></div>
+    <div><label class="field">Sisi Kartu</label>
+      <select class="ctx-side">
+        <option value="depan" ${c.side!=='belakang'?'selected':''}>Depan</option>
+        <option value="belakang" ${c.side==='belakang'?'selected':''}>Belakang</option>
+      </select>
+    </div>
+    <div class="design-row-inline"><label class="field">Warna</label><input type="color" class="ctx-color" value="${c.color||'#082B73'}"></div>
+    <div><label class="field">Geser X (mm)</label><input type="number" step="0.5" class="ctx-x" value="${c.x||0}"></div>
+    <div><label class="field">Geser Y (mm)</label><input type="number" step="0.5" class="ctx-y" value="${c.y||0}"></div>
+    <div class="ctr-full"><label class="field">Ukuran Teks (mm)</label><input type="number" step="0.1" min="1" max="10" class="ctx-size" value="${c.size||3}"></div>
+  </div>`;
+}
+function renderCustomTextRows(list){
+  const wrap = document.getElementById('wrapCustomTexts');
+  if(!wrap) return;
+  wrap.innerHTML = (list && list.length) ? list.map((c,i)=>customTextRowHTML(c,i)).join('') : '<p class="design-note" style="margin:0 0 6px;">Belum ada teks tambahan.</p>';
+  wrap.querySelectorAll('.btn-hapus-teks').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const cur = bacaCustomTextsDariForm();
+      cur.splice(parseInt(btn.dataset.idx,10), 1);
+      renderCustomTextRows(cur);
+      updateDesainPreview();
+    });
+  });
+  wrap.querySelectorAll('input, select').forEach(el=>{
+    el.addEventListener('input', updateDesainPreview);
+    el.addEventListener('change', updateDesainPreview);
+  });
+}
+function bacaCustomTextsDariForm(){
+  const wrap = document.getElementById('wrapCustomTexts');
+  if(!wrap) return [];
+  return Array.from(wrap.querySelectorAll('.custom-text-row')).map(row=>({
+    text: row.querySelector('.ctx-text').value.trim(),
+    side: row.querySelector('.ctx-side').value,
+    color: row.querySelector('.ctx-color').value,
+    x: parseFloat(row.querySelector('.ctx-x').value) || 0,
+    y: parseFloat(row.querySelector('.ctx-y').value) || 0,
+    size: parseFloat(row.querySelector('.ctx-size').value) || 3
+  }));
+}
+document.getElementById('btnTambahTeks').addEventListener('click', ()=>{
+  const cur = bacaCustomTextsDariForm();
+  cur.push({text:'', side:'depan', color:'#082B73', x:0, y:0, size:3});
+  renderCustomTextRows(cur);
+});
 
 function bacaFormDesainSementara(){
   const val = (id)=>{ const el=document.getElementById(id); return el ? el.value : ''; };
   const num = (id, def)=>{ const v = parseFloat(val(id)); return isNaN(v) ? def : v; };
   return Object.assign({}, KARTU_DESAIN, {
+    theme: val('selKartuTema') || 'navygold',
+    themeNavy: val('inpTemaNavy') || '#082B73', themeRoyal: val('inpTemaRoyal') || '#1247A6', themeGold: val('inpTemaGold') || '#FDB813',
     logoKiriX: num('inpLogoKiriX',0), logoKiriY: num('inpLogoKiriY',0), logoKiriSize: num('inpLogoKiriSize',9.5),
     logoKananX: num('inpLogoKananX',0), logoKananY: num('inpLogoKananY',0), logoKananSize: num('inpLogoKananSize',8.6),
     judul: val('inpJudulKartu').trim() || 'KARTU PELAJAR',
+    judulX: num('inpJudulX',0), judulY: num('inpJudulY',0), judulSize: num('inpJudulSize',4.6), judulColor: val('inpJudulColor') || '#082B73',
     namaSekolah: val('inpNamaSekolah').trim() || 'SMP NEGERI 2 MUARA BUNGO',
     namaSekolahX: num('inpNamaSekolahX',0), namaSekolahY: num('inpNamaSekolahY',0), namaSekolahSize: num('inpNamaSekolahSize',2.3),
+    namaSekolahColor: val('inpNamaSekolahColor') || '#1247A6',
     labelTahun: val('inpLabelTahun').trim() || 'TAHUN PELAJARAN',
     footerSlogan: val('inpFooterSlogan').trim(),
     backRulesTitle: val('inpBackRulesTitle').trim(),
     backRules: val('inpBackRules').split('\n').map(x=>x.trim()).filter(Boolean),
+    backRulesX: num('inpBackRulesX',0), backRulesY: num('inpBackRulesY',0), backRulesSize: num('inpBackRulesSize',1.55),
+    backRulesColor: val('inpBackRulesColor') || '#1a2a52',
     backMottoTitle: val('inpBackMottoTitle').trim(),
     backMotto1: val('inpBackMotto1').trim(),
     backMotto2: val('inpBackMotto2').trim(),
+    backMottoX: num('inpBackMottoX',0), backMottoY: num('inpBackMottoY',0), backMottoSize: num('inpBackMottoSize',2),
+    backMotto1Color: val('inpBackMotto1Color') || '#c62828', backMotto2Color: val('inpBackMotto2Color') || '#082B73',
     backContactTitle: val('inpBackContactTitle').trim(),
     backContact: val('inpBackContact').split('\n').map(x=>x.trim()).filter(Boolean),
     backFooterNama: val('inpBackFooterNama').trim(),
     backFooterAlamat: val('inpBackFooterAlamat').trim(),
-    backFooterKredit: val('inpBackFooterKredit').trim()
+    backFooterKredit: val('inpBackFooterKredit').trim(),
+    customTexts: bacaCustomTextsDariForm()
   });
 }
 
@@ -1942,8 +2119,12 @@ function renderDesainForm(){
   updateDesainPreview();
 }
 
-document.querySelectorAll('#ap-desain input[type=text], #ap-desain input[type=number], #ap-desain textarea').forEach(el=>{
+document.querySelectorAll('#ap-desain input[type=text], #ap-desain input[type=number], #ap-desain input[type=color], #ap-desain textarea').forEach(el=>{
   el.addEventListener('input', updateDesainPreview);
+});
+document.getElementById('selKartuTema').addEventListener('change', ()=>{
+  toggleTemaKustomWrap();
+  updateDesainPreview();
 });
 
 document.getElementById('inpLogoKiriFile').addEventListener('change', (e)=>{
