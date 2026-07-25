@@ -303,6 +303,8 @@ th{color:var(--muted);font-weight:700;font-size:.7rem;text-transform:uppercase;l
   .admin-sidebar,.admin-topbar,.toast,.sidebar-overlay{display:none;}
 }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
 
@@ -415,15 +417,31 @@ th{color:var(--muted);font-weight:700;font-size:.7rem;text-transform:uppercase;l
       </div>
     </div>
 
+    <div id="scanJenisPilih" class="scan-setup hide">
+      <div class="card">
+        <h2 style="margin:0 0 6px;color:var(--navy);">Pilih Jenis Absensi</h2>
+        <p style="color:var(--muted);font-size:.85rem;margin:0 0 16px;">Pilih dulu jenis absensi yang akan dicatat perangkat ini, baru kamera akan terbuka.</p>
+        <div style="display:grid;gap:12px;">
+          <button class="btn btn-navy block" style="padding:18px;font-size:1.05rem;" id="btnPilihJenisPagi">🌅 Absen Pagi</button>
+          <button class="btn btn-navy block" style="padding:18px;font-size:1.05rem;" id="btnPilihJenisSholat">🕌 Absen Sholat</button>
+          <button class="btn btn-navy block" style="padding:18px;font-size:1.05rem;" id="btnPilihJenisPulang">🏠 Absen Pulang</button>
+        </div>
+      </div>
+    </div>
+
     <div id="scanMain" class="scan-body hide">
       <div>
         <div class="scan-cam-box">
+          <div class="scan-cam-hint" style="font-weight:700;color:var(--navy);" id="scanJenisTitle">Scanner Absensi</div>
           <div class="scan-cam-hint">Arahkan kamera ke QR Code pada kartu siswa</div>
           <div id="reader"></div>
         </div>
         <div style="display:flex;gap:8px;margin-top:12px;">
           <button class="btn btn-navy block" id="btnStartScan">▶ Mulai Kamera</button>
           <button class="btn btn-outline block hide" id="btnStopScan">⏸ Stop</button>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button class="btn btn-outline block" id="btnGantiJenis">↩ Ganti Jenis Absensi</button>
         </div>
         <div style="display:flex;gap:8px;margin-top:8px;">
           <button class="btn btn-outline block" id="btnOpenManualAbsen">📝 Absensi Manual</button>
@@ -623,19 +641,27 @@ th{color:var(--muted);font-weight:700;font-size:.7rem;text-transform:uppercase;l
         <section class="admin-page hide" id="ap-rekap">
           <div class="card">
             <h2 style="margin:0 0 12px;font-size:1rem;">Rekap Hari Ini (ringkas)</h2>
-            <div class="stat-row" style="grid-template-columns:repeat(6,1fr);">
+            <div class="stat-row" style="grid-template-columns:repeat(4,1fr);">
               <div class="stat-card"><div class="ic-wrap" style="background:#e7f7ee;color:var(--success);">✅</div>
                 <div><div class="num" id="statHadir">0</div><div class="lbl">Hadir</div></div></div>
               <div class="stat-card"><div class="ic-wrap" style="background:#fdf3e2;color:#b8791f;">⏰</div>
                 <div><div class="num" id="statTelat">0</div><div class="lbl">Terlambat</div></div></div>
               <div class="stat-card"><div class="ic-wrap" style="background:var(--danger-bg);color:var(--danger);">❌</div>
                 <div><div class="num" id="statAlpa">0</div><div class="lbl">Belum Absen</div></div></div>
-              <div class="stat-card"><div class="ic-wrap" style="background:#e7ecfb;color:var(--navy-3);">➡️</div>
-                <div><div class="num" id="statMasuk">0</div><div class="lbl">Masuk</div></div></div>
-              <div class="stat-card"><div class="ic-wrap" style="background:#e7ecfb;color:var(--navy-3);">⬅️</div>
-                <div><div class="num" id="statPulang">0</div><div class="lbl">Pulang</div></div></div>
               <div class="stat-card"><div class="ic-wrap" style="background:#eef2f7;color:#556;">🗓️</div>
                 <div><div class="num" id="statDispensasi">0</div><div class="lbl">Dispensasi</div></div></div>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top:16px;">
+            <h2 style="margin:0 0 12px;font-size:1rem;">Rekap Terpisah per Jenis Absensi (Hari Ini)</h2>
+            <div class="stat-row" style="grid-template-columns:repeat(3,1fr);">
+              <div class="stat-card"><div class="ic-wrap" style="background:#e7ecfb;color:var(--navy-3);">🌅</div>
+                <div><div class="num" id="statPagi">0</div><div class="lbl">Absen Pagi</div></div></div>
+              <div class="stat-card"><div class="ic-wrap" style="background:#f1e9fb;color:#6a3fb5;">🕌</div>
+                <div><div class="num" id="statSholat">0</div><div class="lbl">Absen Sholat</div></div></div>
+              <div class="stat-card"><div class="ic-wrap" style="background:#e7ecfb;color:var(--navy-3);">🏠</div>
+                <div><div class="num" id="statPulang">0</div><div class="lbl">Absen Pulang</div></div></div>
             </div>
           </div>
 
@@ -661,7 +687,7 @@ th{color:var(--muted);font-weight:700;font-size:.7rem;text-transform:uppercase;l
               <div><label class="field">Nama Siswa</label><input type="text" id="inpRekapNama" placeholder="Cari nama..."></div>
               <div><label class="field">Status</label><select id="selRekapStatus"><option value="">Semua status</option>
                 <option>Hadir</option><option>Terlambat</option><option>Sakit</option><option>Izin</option><option>Alpha</option><option>Dispensasi</option></select></div>
-              <div><label class="field">Jenis</label><select id="selRekapJenis"><option value="">Semua</option><option>Masuk</option><option>Pulang</option></select></div>
+              <div><label class="field">Jenis</label><select id="selRekapJenis"><option value="">Semua</option><option>Pagi</option><option>Sholat</option><option>Pulang</option></select></div>
               <div><label class="field">Cara Absensi</label><select id="selRekapCara"><option value="">Semua</option><option>QR</option><option>Manual</option></select></div>
               <div><label class="field">Petugas Scanner</label><select id="selRekapScanner"><option value="">Semua</option></select></div>
             </div>
@@ -673,7 +699,8 @@ th{color:var(--muted);font-weight:700;font-size:.7rem;text-transform:uppercase;l
             <div class="field-gap"></div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
               <button class="btn btn-outline" id="btnExportRekap">⬇ Export Excel</button>
-              <button class="btn btn-outline" id="btnPrintRekap">🖨 Print / PDF</button>
+              <button class="btn btn-outline" id="btnExportPdf">⬇ Export PDF</button>
+              <button class="btn btn-outline" id="btnPrintRekap">🖨 Print</button>
               <button class="btn btn-outline" id="btnSimpanArsip">🗄 Simpan ke Arsip</button>
               <button class="btn btn-outline" id="btnRefreshRekap">🔄 Refresh</button>
             </div>
@@ -756,6 +783,27 @@ function toast(msg){
 function todayStr(){ return new Date().toISOString().slice(0,10); }
 function nowTime(){ return new Date().toTimeString().slice(0,5); }
 
+/* Waktu server: petugas bisa saja mengubah jam di perangkatnya sendiri, jadi validasi
+   jadwal & pencatatan jam absen memakai jam server (Supabase), bukan jam perangkat.
+   Offset dihitung dari header Date pada respons Supabase, lalu dipakai untuk semua scan
+   sampai sinkron ulang berikutnya (dipanggil saat masuk kiosk & tiap heartbeat). */
+let serverTimeOffsetMs = 0;
+async function syncServerTime(){
+  try{
+    const t0 = Date.now();
+    const res = await fetch(SUPABASE_URL + '/rest/v1/', {method:'HEAD', headers:{apikey:SUPABASE_ANON_KEY}});
+    const dateHeader = res.headers.get('date');
+    if(dateHeader){
+      const t1 = Date.now();
+      const serverNow = new Date(dateHeader).getTime() + (t1 - t0)/2;
+      serverTimeOffsetMs = serverNow - t1;
+    }
+  }catch(e){ console.warn('Gagal sinkron waktu server, memakai waktu perangkat', e); }
+}
+function serverNowDate(){ return new Date(Date.now() + serverTimeOffsetMs); }
+function nowTimeServer(){ return serverNowDate().toTimeString().slice(0,5); }
+function todayStrServer(){ return serverNowDate().toISOString().slice(0,10); }
+
 /* ================= JADWAL JAM MASUK/PULANG PER HARI =================
    Senin–Kamis: Masuk 07:00–07:15, Pulang 15:10–16:00
    Jumat      : Masuk 07:00–07:15, Pulang 11:00–16:00 */
@@ -769,6 +817,28 @@ const JADWAL_DEFAULT = {
   jumat:  {batas:'07:00', masuk_mulai:'07:00', masuk_selesai:'07:15', pulang_mulai:'11:00', pulang_selesai:'16:00'},
 };
 let JADWAL_HARI = JSON.parse(JSON.stringify(JADWAL_DEFAULT));
+
+/* Jadwal Absen Sholat: tetap (tidak per-hari), Senin-Jumat pukul 11.30-13.00 WIB */
+const SHOLAT_MULAI = '11:30';
+const SHOLAT_SELESAI = '13:00';
+
+/* Cek apakah waktu `jam` (HH:MM) berada dalam jendela absen untuk `jenis` (Pagi/Sholat/Pulang) pada jadwal hari `j`.
+   Mengembalikan {ok:boolean, pesan?:string} */
+function cekJendelaAbsen(jenis, jam, j){
+  if(jenis==='Sholat'){
+    if(jam>=SHOLAT_MULAI && jam<=SHOLAT_SELESAI) return {ok:true};
+    return {ok:false, pesan:`Jadwal absensi Sholat belum dibuka atau telah ditutup (jam ${SHOLAT_MULAI}-${SHOLAT_SELESAI} WIB)`};
+  }
+  if(jenis==='Pagi'){
+    if(jam>=j.masuk_mulai && jam<=j.masuk_selesai) return {ok:true};
+    return {ok:false, pesan:`Jadwal absensi Pagi belum dibuka atau telah ditutup (jam ${j.masuk_mulai}-${j.masuk_selesai} WIB)`};
+  }
+  if(jenis==='Pulang'){
+    if(jam>=j.pulang_mulai && jam<=j.pulang_selesai) return {ok:true};
+    return {ok:false, pesan:`Jadwal absensi Pulang belum dibuka atau telah ditutup (jam ${j.pulang_mulai}-${j.pulang_selesai} WIB)`};
+  }
+  return {ok:false, pesan:'Jenis absensi tidak dikenali'};
+}
 
 function hariKeyFromDate(d){
   const idx = d.getDay(); // 0=Minggu ... 6=Sabtu
@@ -915,7 +985,7 @@ async function refreshSiswaCache(){
 
 async function refreshAbsenCache(){
   if(!sb) return;
-  const {data, error} = await sb.from('absen').select('*').eq('tanggal', todayStr());
+  const {data, error} = await sb.from('absen').select('*').eq('tanggal', todayStrServer());
   if(error){ console.error(error); return; }
   absenCache = data || [];
 }
@@ -1246,13 +1316,15 @@ function renderRekapHariIni(){
   const telat = absenHariIni.filter(a=>a.status==='Terlambat').length;
   const totalAbsen = siswaAll.filter(s=>absenHariIni.some(a=>a.nama===s.nama && a.kelas===s.kelas)).length;
   const alpa = siswaAll.length - totalAbsen;
-  const masuk = absenHariIni.filter(a=>(a.jenis||'Masuk')==='Masuk').length;
+  const pagi = absenHariIni.filter(a=>(a.jenis||'Pagi')==='Pagi' || a.jenis==='Masuk').length;
+  const sholat = absenHariIni.filter(a=>a.jenis==='Sholat').length;
   const pulang = absenHariIni.filter(a=>a.jenis==='Pulang').length;
   const dispensasi = absenHariIni.filter(a=>a.status==='Dispensasi').length;
   document.getElementById('statHadir').textContent = hadir;
   document.getElementById('statTelat').textContent = telat;
   document.getElementById('statAlpa').textContent = alpa;
-  document.getElementById('statMasuk').textContent = masuk;
+  document.getElementById('statPagi').textContent = pagi;
+  document.getElementById('statSholat').textContent = sholat;
   document.getElementById('statPulang').textContent = pulang;
   document.getElementById('statDispensasi').textContent = dispensasi;
 }
@@ -1327,6 +1399,26 @@ document.getElementById('btnExportRekap').addEventListener('click', ()=>{
   XLSX.utils.book_append_sheet(wb, ws, 'Rekap');
   XLSX.writeFile(wb, `rekap-absensi-${todayStr()}.xlsx`);
   logAktivitas('export_rekap', `Export Excel rekap (${rekapRows.length} baris)`);
+});
+
+document.getElementById('btnExportPdf').addEventListener('click', ()=>{
+  if(rekapRows.length===0){ toast('Tampilkan rekap dulu sebelum export'); return; }
+  if(!window.jspdf || !window.jspdf.jsPDF){ toast('Modul PDF gagal dimuat — cek koneksi internet'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({orientation:'landscape'});
+  doc.setFontSize(13);
+  doc.text('Rekap Absensi — SMP Negeri 2 Muara Bungo', 14, 14);
+  doc.setFontSize(9);
+  doc.text(`Dicetak: ${new Date().toLocaleString('id-ID')}`, 14, 20);
+  doc.autoTable({
+    startY: 25,
+    head: [['Tanggal','Nama','Kelas','Jam','Jenis','Status','Cara','Petugas']],
+    body: rekapRows.map(a=>[a.tanggal, a.nama, a.kelas, a.jam, a.jenis||'-', a.status, a.cara||'-', a.scanner||'-']),
+    styles:{fontSize:8},
+    headStyles:{fillColor:[15,42,90]}
+  });
+  doc.save(`rekap-absensi-${todayStr()}.pdf`);
+  logAktivitas('export_rekap', `Export PDF rekap (${rekapRows.length} baris)`);
 });
 
 document.getElementById('btnPrintRekap').addEventListener('click', ()=>{
@@ -1691,6 +1783,7 @@ async function initScanPage(){
   if(!scanClockTimer){ updateScanClock(); scanClockTimer = setInterval(updateScanClock, 1000); }
 
   document.getElementById('scanSetup').classList.add('hide');
+  document.getElementById('scanJenisPilih').classList.add('hide');
   document.getElementById('scanMain').classList.add('hide');
   document.getElementById('scanPending').classList.add('hide');
 
@@ -1708,14 +1801,35 @@ async function initScanPage(){
     return;
   }
   document.getElementById('scanDeviceName').textContent = scannerDeviceName;
-  document.getElementById('scanMain').classList.remove('hide');
-  renderScanJumlahHariIni();
+  jenisAbsenDipilih = null;
+  document.getElementById('scanJenisPilih').classList.remove('hide');
+  await syncServerTime();
   await heartbeatScanner();
-  if(!scanHeartbeatTimer) scanHeartbeatTimer = setInterval(heartbeatScanner, 60000);
+  if(!scanHeartbeatTimer) scanHeartbeatTimer = setInterval(()=>{ heartbeatScanner(); syncServerTime(); }, 60000);
 }
+
+/* ================= PILIH JENIS ABSENSI ================= */
+let jenisAbsenDipilih = null;
+const JENIS_LABEL = {Pagi:'Scanner Absensi Pagi', Sholat:'Scanner Absensi Sholat', Pulang:'Scanner Absensi Pulang'};
+function pilihJenisAbsen(jenis){
+  jenisAbsenDipilih = jenis;
+  document.getElementById('scanJenisPilih').classList.add('hide');
+  document.getElementById('scanMain').classList.remove('hide');
+  document.getElementById('scanJenisTitle').textContent = JENIS_LABEL[jenis] || 'Scanner Absensi';
+  renderScanJumlahHariIni();
+}
+document.getElementById('btnPilihJenisPagi').addEventListener('click', ()=>pilihJenisAbsen('Pagi'));
+document.getElementById('btnPilihJenisSholat').addEventListener('click', ()=>pilihJenisAbsen('Sholat'));
+document.getElementById('btnPilihJenisPulang').addEventListener('click', ()=>pilihJenisAbsen('Pulang'));
+document.getElementById('btnGantiJenis').addEventListener('click', ()=>{
+  stopScanIfRunning();
+  document.getElementById('scanMain').classList.add('hide');
+  jenisAbsenDipilih = null;
+  document.getElementById('scanJenisPilih').classList.remove('hide');
+});
 function renderScanJumlahHariIni(){
   const el = document.getElementById('scanJumlahHariIni');
-  if(el) el.textContent = absenCache.filter(a=>a.scanner===scannerDeviceName).length;
+  if(el) el.textContent = absenCache.filter(a=>a.scanner===scannerDeviceName && (!jenisAbsenDipilih || a.jenis===jenisAbsenDipilih)).length;
 }
 
 document.getElementById('btnSaveScannerName').addEventListener('click', async ()=>{
@@ -1797,25 +1911,31 @@ async function onScanSuccess(decodedText){
     beep(false); return;
   }
 
-  const jam = nowTime();
+  if(!jenisAbsenDipilih){
+    showScanResult(false, `Pilih jenis absensi dulu`);
+    beep(false); return;
+  }
+  const jenis = jenisAbsenDipilih;
+  const jam = nowTimeServer();
+  const tgl = todayStrServer();
   const jadwalHari = jadwalHariIni();
   if(!jadwalHari){
     showScanResult(false, `Hari ini bukan hari sekolah (jadwal hanya Senin–Jumat)`);
     beep(false); return;
   }
-  const jenis = tentukanJenisAbsen(jam);
-  if(!jenis){
-    showScanResult(false, `Di luar jam absensi ${HARI_KEY_LABEL[hariKeyFromDate(new Date())]} (Masuk ${jadwalHari.masuk_mulai}-${jadwalHari.masuk_selesai}, Pulang ${jadwalHari.pulang_mulai}-${jadwalHari.pulang_selesai})`);
+  const cekJendela = cekJendelaAbsen(jenis, jam, jadwalHari);
+  if(!cekJendela.ok){
+    showScanResult(false, cekJendela.pesan);
     beep(false); return;
   }
-  const sudah = absenCache.find(a=>a.nama===siswa.nama && a.kelas===siswa.kelas && a.tanggal===todayStr() && (a.jenis||'Masuk')===jenis);
+  const sudah = absenCache.find(a=>a.nama===siswa.nama && a.kelas===siswa.kelas && a.tanggal===tgl && (a.jenis||'Pagi')===jenis);
   if(sudah){
-    showScanResult(false, `${siswa.nama} — sudah absen ${jenis} (${sudah.jam})`);
+    showScanResult(false, `Absensi sudah tercatat`);
     beep(false); return;
   }
 
-  const telat = jenis==='Masuk' && jam > jadwalHari.batas;
-  const entry = {nama:siswa.nama, kelas:siswa.kelas, tanggal:todayStr(), jam, status: telat?'Terlambat':'Hadir', scanner: scannerDeviceName, jenis, cara:'QR'};
+  const telat = jenis==='Pagi' && jam > jadwalHari.batas;
+  const entry = {nama:siswa.nama, kelas:siswa.kelas, tanggal:tgl, jam, status: telat?'Terlambat':'Hadir', scanner: scannerDeviceName, jenis, cara:'QR'};
   absenCache.push(entry);
   const {error} = await sb.from('absen').insert(entry);
   if(error){
@@ -1832,14 +1952,14 @@ async function onScanSuccess(decodedText){
   card.innerHTML = `
     <div class="scan-result-head">✅ ABSENSI BERHASIL</div>
     <div class="scan-result-name">${siswa.nama}</div>
-    <div style="margin-top:4px;"><span class="pill ${telat?'telat':'hadir'}">${telat?'Terlambat':'Masuk'}</span></div>
+    <div style="margin-top:4px;"><span class="pill ${telat?'telat':'hadir'}">${telat?'Terlambat':'Absen '+jenis}</span></div>
     <div class="scan-result-meta">
       Kelas &nbsp; ${siswa.kelas}<br>
       Waktu &nbsp; ${jam}<br>
       Tanggal &nbsp; ${new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'})}<br>
       Scanner &nbsp; ${scannerDeviceName}
     </div>`;
-  prependScanHistory(siswa.nama, siswa.kelas, jam, telat);
+  prependScanHistory(siswa.nama, siswa.kelas, jam, telat, 'Absen '+jenis);
   beep(true);
 }
 
@@ -1849,12 +1969,13 @@ function showScanResult(ok, msg){
   card.innerHTML = `<div style="color:var(--danger);font-weight:700;font-size:.88rem;">⚠️ ${msg}</div>`;
 }
 
-function prependScanHistory(nama, kelas, jam, telat){
+function prependScanHistory(nama, kelas, jam, telat, label){
   const list = document.getElementById('scanHistList');
   const row = document.createElement('div');
   row.className = 'scan-hist-row';
+  const teks = telat ? 'Terlambat' : (label || 'Hadir');
   row.innerHTML = `<span style="font-weight:700;">${nama}</span><span style="color:var(--muted);">${kelas}</span>
-    <span>${jam}</span><span class="pill ${telat?'telat':'hadir'}">${telat?'Terlambat':'Masuk'}</span>`;
+    <span>${jam}</span><span class="pill ${telat?'telat':'hadir'}">${teks}</span>`;
   list.insertBefore(row, list.firstChild);
   while(list.children.length > 6) list.removeChild(list.lastChild);
 }
@@ -1886,15 +2007,17 @@ document.getElementById('btnSimpanManual').addEventListener('click', async ()=>{
   if(!siswa){ toast('Nama tidak ditemukan di data siswa — pilih dari daftar'); return; }
   const status = document.getElementById('selManualStatus').value;
   const keterangan = document.getElementById('inpManualKeterangan').value.trim();
-  const sudah = absenCache.find(a=>a.nama===siswa.nama && a.kelas===siswa.kelas && a.tanggal===todayStr());
-  if(sudah){ toast(`${siswa.nama} sudah tercatat absen hari ini (${sudah.status})`); return; }
-  const jam = nowTime();
-  const entry = {nama:siswa.nama, kelas:siswa.kelas, tanggal:todayStr(), jam, status, scanner: scannerDeviceName, jenis:'Masuk', cara:'Manual', keterangan: keterangan||null};
+  const jenisManual = jenisAbsenDipilih || 'Pagi';
+  const tgl = todayStrServer();
+  const sudah = absenCache.find(a=>a.nama===siswa.nama && a.kelas===siswa.kelas && a.tanggal===tgl && (a.jenis||'Pagi')===jenisManual);
+  if(sudah){ toast(`Absensi sudah tercatat`); return; }
+  const jam = nowTimeServer();
+  const entry = {nama:siswa.nama, kelas:siswa.kelas, tanggal:tgl, jam, status, scanner: scannerDeviceName, jenis:jenisManual, cara:'Manual', keterangan: keterangan||null};
   absenCache.push(entry);
   const {error} = await sb.from('absen').insert(entry);
   if(error){ console.error(error); absenCache.pop(); toast('Gagal simpan — cek koneksi (pastikan migrasi SQL sudah dijalankan)'); return; }
-  logAktivitas('absen_manual', `${siswa.nama} (${siswa.kelas}) dicatat ${status} manual oleh ${scannerDeviceName}`);
-  prependScanHistory(siswa.nama, siswa.kelas, jam, status==='Terlambat');
+  logAktivitas('absen_manual', `${siswa.nama} (${siswa.kelas}) dicatat ${status} manual (${jenisManual}) oleh ${scannerDeviceName}`);
+  prependScanHistory(siswa.nama, siswa.kelas, jam, status==='Terlambat', 'Absen '+jenisManual);
   renderScanJumlahHariIni();
   toast(`Absensi manual ${siswa.nama} tersimpan (${status})`);
   document.getElementById('scanManualPanel').classList.add('hide');
