@@ -295,6 +295,13 @@ th{color:var(--muted);font-weight:700;font-size:.7rem;text-transform:uppercase;l
 .idc-head .t2{font-weight:700;font-size:2.3mm;color:var(--royal);margin-top:.3mm;}
 .idc-yearpill{position:absolute;top:9.4mm;left:50%;transform:translateX(-50%);background:var(--navy);color:var(--gold);font-weight:700;font-size:1.9mm;padding:.9mm 3.2mm;border-radius:10mm;letter-spacing:.3px;z-index:2;white-space:nowrap;}
 .idc-custom-text{position:absolute;left:0;top:0;z-index:5;white-space:pre-wrap;font-family:'Poppins','Montserrat',Arial,sans-serif;pointer-events:none;}
+.idc-custom-image{position:absolute;left:0;top:0;z-index:6;}
+.idc-custom-image:not(.editable){pointer-events:none;}
+.idc-custom-image img{width:100%;height:100%;object-fit:contain;display:block;pointer-events:none;-webkit-user-drag:none;}
+.idc-custom-image.editable{cursor:move;touch-action:none;-webkit-user-select:none;user-select:none;outline:1.4px dashed rgba(18,71,166,.65);outline-offset:2px;border-radius:1mm;}
+.idc-custom-image.editable:hover{outline-color:#0b3fae;}
+.idc-img-resize-handle{position:absolute;right:-6px;bottom:-6px;width:12px;height:12px;background:#1247A6;border:2px solid #fff;border-radius:50%;cursor:nwse-resize;box-shadow:0 1px 3px rgba(0,0,0,.4);touch-action:none;}
+.idc-img-del{position:absolute;left:-8px;top:-8px;width:16px;height:16px;border-radius:50%;background:#c0392b;color:#fff;font-size:10px;line-height:16px;text-align:center;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.4);font-weight:800;touch-action:none;}
 .idc-body{position:absolute;top:14.5mm;left:2.6mm;right:2.6mm;bottom:6mm;display:flex;z-index:2;}
 .idc-fields{flex:1;padding-top:1.5mm;}
 .idc-field{display:flex;align-items:center;gap:1.3mm;font-size:2.5mm;font-weight:700;color:var(--navy);margin-bottom:2.6mm;}
@@ -320,6 +327,7 @@ textarea{resize:vertical;min-height:70px;line-height:1.5;}
 input[type=color]{width:44px;height:38px;padding:2px;border:1.5px solid var(--line);border-radius:9px;cursor:pointer;}
 .design-row-inline{display:flex;align-items:center;gap:8px;}
 .design-row-inline label.field{margin:0;}
+.custom-img-add-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px;}
 .custom-text-row{border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px;position:relative;}
 .custom-text-row .ctr-full{grid-column:1/-1;}
 .custom-text-row .ctr-remove{position:absolute;top:6px;right:6px;background:var(--danger-bg);color:var(--danger);border:none;
@@ -949,6 +957,19 @@ input[type=color]{width:44px;height:38px;padding:2px;border:1.5px solid var(--li
                 <p class="design-note" style="margin-bottom:10px;">Tambahkan tulisan bebas di sisi depan atau belakang kartu — misalnya nama kepala sekolah, tahun berdiri, atau catatan khusus. Bisa digeser posisinya, diubah ukuran &amp; warnanya.</p>
                 <div id="wrapCustomTexts"></div>
                 <button type="button" class="btn btn-outline sm" id="btnTambahTeks">➕ Tambah Teks</button>
+              </div>
+
+              <div class="design-section">
+                <h3>🖼️ Gambar Tambahan (Upload / Tempel)</h3>
+                <p class="design-note" style="margin-bottom:10px;">Tambahkan gambar/foto bebas di sisi depan atau belakang kartu — upload dari file atau tempel (paste) dari clipboard. Setelah muncul di pratinjau kanan, gambar bisa <b>digeser</b> (klik &amp; tahan lalu seret) dan <b>dibesarkan/dikecilkan</b> (seret titik biru di pojok kanan-bawahnya) langsung pakai kursor. Klik tanda ✕ merah di pojok kiri-atas gambar untuk menghapusnya.</p>
+                <div class="custom-img-add-row">
+                  <div style="flex:1;min-width:160px;">
+                    <input type="file" accept="image/*" id="inpTambahGambarFile" multiple>
+                  </div>
+                  <button type="button" class="btn btn-outline sm" id="btnTempelGambar">📋 Tempel dari Clipboard</button>
+                </div>
+                <div class="design-note">Tips: klik area pratinjau kartu di sebelah kanan lalu tekan Ctrl+V (Cmd+V di Mac) untuk menempel gambar langsung dari clipboard.</div>
+                <div id="wrapCustomImages"></div>
               </div>
 
               <div class="design-section">
@@ -1823,8 +1844,25 @@ function idcCustomTextsHTML(d, side){
   }).join('');
 }
 
+/* Render lapisan gambar tambahan (upload/tempel bebas) untuk sisi 'depan' atau 'belakang'.
+   interactive=true → dipakai di pratinjau editor admin (bisa digeser & dibesarkan pakai kursor).
+   interactive=false/undefined → dipakai saat cetak, gambar dikunci di posisi tersimpan. */
+function idcCustomImagesHTML(d, side, interactive){
+  return (d.customImages||[]).filter(c=>c.side===side && c.src).map(c=>{
+    const w = c.w||20, h = c.h||20, x = c.x||0, y = c.y||0;
+    const cls = interactive ? 'idc-custom-image editable' : 'idc-custom-image';
+    const handles = interactive
+      ? `<span class="idc-img-del" data-id="${c.id}" title="Hapus gambar">✕</span><span class="idc-img-resize-handle" data-id="${c.id}" title="Seret untuk mengubah ukuran"></span>`
+      : '';
+    return `<div class="${cls}" data-img-id="${c.id}" style="transform:translate(${x}mm,${y}mm);width:${w}mm;height:${h}mm;">
+      <img src="${c.src}" alt="Gambar tambahan" draggable="false">
+      ${handles}
+    </div>`;
+  }).join('');
+}
+
 /* Sisi belakang kartu — teks diatur lewat KARTU_DESAIN (menu Desain Kartu) */
-function idcBackHTML(d){
+function idcBackHTML(d, interactive){
   d = d || KARTU_DESAIN;
   const theme = getThemeColors(d);
   const rules = (d.backRules||[]).map((r,i)=>`<div class="idc-rule"><span class="num">${i+1}</span>${r}</div>`).join('');
@@ -1850,6 +1888,7 @@ function idcBackHTML(d){
       </div>
     </div>
     ${idcCustomTextsHTML(d,'belakang')}
+    ${idcCustomImagesHTML(d,'belakang',interactive)}
     <div class="idc-back-footer">
       <div class="bf-name">${d.backFooterNama}</div>
       <div class="bf-addr">${d.backFooterAlamat}</div>
@@ -1916,7 +1955,8 @@ const DEFAULT_KARTU_DESAIN = {
   backFooterNama: 'SMP NEGERI 2 MUARA BUNGO',
   backFooterAlamat: 'Jl. Lintas Sumatera KM.7, Muara Bungo, Kabupaten Bungo, Provinsi Jambi',
   backFooterKredit: '@DIGITAL IDENTITY CARD • DESIGNED & DEVELOPED BY IT TEAM • SMP NEGERI 2 MUARA BUNGO',
-  customTexts: []
+  customTexts: [],
+  customImages: []
 };
 let KARTU_DESAIN = JSON.parse(JSON.stringify(DEFAULT_KARTU_DESAIN));
 
@@ -1945,7 +1985,7 @@ function idcLogoKananHTML(d){
 }
 
 /* Sisi depan kartu. `s`={nama,kelas} data siswa (terkunci), `qrInner` = konten kotak QR/Barcode (terkunci) */
-function idcFrontHTML(s, qrInner, d){
+function idcFrontHTML(s, qrInner, d, interactive){
   d = d || KARTU_DESAIN;
   const theme = getThemeColors(d);
   const judulStyle = `transform:translate(${d.judulX||0}mm,${d.judulY||0}mm);font-size:${d.judulSize||4.6}mm;color:${d.judulColor||theme.navy};`;
@@ -1966,6 +2006,7 @@ function idcFrontHTML(s, qrInner, d){
           <div class="idc-qrbox">${qrInner}<div class="lbl">BARCODE / QR CODE</div></div>
         </div>
         ${idcCustomTextsHTML(d,'depan')}
+        ${idcCustomImagesHTML(d,'depan',interactive)}
         <div class="idc-wave-bottom"></div>
         <div class="idc-footer">${d.footerSlogan}</div>
       </div>`;
@@ -2016,6 +2057,7 @@ function isiFormDesain(){
   set('inpBackContactTitle', d.backContactTitle||''); set('inpBackContact', (d.backContact||[]).join('\n'));
   set('inpBackFooterNama', d.backFooterNama||''); set('inpBackFooterAlamat', d.backFooterAlamat||''); set('inpBackFooterKredit', d.backFooterKredit||'');
   renderCustomTextRows(d.customTexts||[]);
+  renderCustomImageRows();
   renderLogoPreviewThumbs();
 }
 
@@ -2072,6 +2114,224 @@ document.getElementById('btnTambahTeks').addEventListener('click', ()=>{
   renderCustomTextRows(cur);
 });
 
+/* ---------- Gambar Tambahan (upload/tempel, bisa digeser & dibesarkan pakai kursor) ----------
+   Disimpan langsung di KARTU_DESAIN.customImages (bukan dibaca dari input form) supaya
+   drag & resize di pratinjau bisa mengubah datanya secara langsung & real-time. */
+function ensureCustomImages(){
+  if(!Array.isArray(KARTU_DESAIN.customImages)) KARTU_DESAIN.customImages = [];
+  return KARTU_DESAIN.customImages;
+}
+function addCustomImage(dataUrl, side){
+  const imgs = ensureCustomImages();
+  const offset = (imgs.length % 5) * 4;
+  imgs.push({
+    id: 'img' + Date.now() + '_' + Math.floor(Math.random()*10000),
+    side: side || 'depan',
+    src: dataUrl,
+    x: 30 + offset, y: 14 + offset, w: 20, h: 20
+  });
+  renderCustomImageRows();
+  updateDesainPreview();
+  toast('Gambar ditambahkan — geser & besarkan langsung di pratinjau kartu');
+}
+function removeCustomImage(id){
+  KARTU_DESAIN.customImages = ensureCustomImages().filter(im=>im.id!==id);
+  renderCustomImageRows();
+  updateDesainPreview();
+}
+function customImageRowHTML(c){
+  return `<div class="custom-text-row custom-img-row" data-img-id="${c.id}">
+    <button type="button" class="ctr-remove btn-hapus-gambar" data-id="${c.id}" title="Hapus">✕</button>
+    <div class="ctr-full" style="display:flex;align-items:center;gap:10px;">
+      <img src="${c.src}" style="width:44px;height:44px;object-fit:contain;border:1px solid var(--line);border-radius:6px;background:#fff;flex-shrink:0;">
+      <span style="font-size:.72rem;color:var(--muted);">Geser &amp; besarkan langsung di pratinjau kartu di samping. Kolom di bawah untuk pengaturan presisi (mm).</span>
+    </div>
+    <div><label class="field">Sisi Kartu</label>
+      <select class="cimg-side" data-id="${c.id}">
+        <option value="depan" ${c.side!=='belakang'?'selected':''}>Depan</option>
+        <option value="belakang" ${c.side==='belakang'?'selected':''}>Belakang</option>
+      </select>
+    </div>
+    <div></div>
+    <div><label class="field">Geser X (mm)</label><input type="number" step="0.5" class="cimg-x" data-id="${c.id}" value="${(c.x||0).toFixed(1)}"></div>
+    <div><label class="field">Geser Y (mm)</label><input type="number" step="0.5" class="cimg-y" data-id="${c.id}" value="${(c.y||0).toFixed(1)}"></div>
+    <div><label class="field">Lebar (mm)</label><input type="number" step="0.5" min="4" max="85" class="cimg-w" data-id="${c.id}" value="${(c.w||20).toFixed(1)}"></div>
+    <div><label class="field">Tinggi (mm)</label><input type="number" step="0.5" min="4" max="54" class="cimg-h" data-id="${c.id}" value="${(c.h||20).toFixed(1)}"></div>
+  </div>`;
+}
+function renderCustomImageRows(){
+  const wrap = document.getElementById('wrapCustomImages');
+  if(!wrap) return;
+  const list = ensureCustomImages();
+  wrap.innerHTML = list.length ? list.map(c=>customImageRowHTML(c)).join('') : '<p class="design-note" style="margin:0 0 6px;">Belum ada gambar tambahan. Upload atau tempel gambar di atas.</p>';
+  wrap.querySelectorAll('.btn-hapus-gambar').forEach(btn=>{
+    btn.addEventListener('click', ()=> removeCustomImage(btn.dataset.id));
+  });
+  wrap.querySelectorAll('.cimg-side').forEach(sel=>{
+    sel.addEventListener('change', ()=>{
+      const img = ensureCustomImages().find(im=>im.id===sel.dataset.id);
+      if(img){ img.side = sel.value; updateDesainPreview(); }
+    });
+  });
+  wrap.querySelectorAll('.cimg-x,.cimg-y,.cimg-w,.cimg-h').forEach(inp=>{
+    inp.addEventListener('input', ()=>{
+      const img = ensureCustomImages().find(im=>im.id===inp.dataset.id);
+      if(!img) return;
+      const v = parseFloat(inp.value) || 0;
+      if(inp.classList.contains('cimg-x')) img.x = v;
+      else if(inp.classList.contains('cimg-y')) img.y = v;
+      else if(inp.classList.contains('cimg-w')) img.w = Math.max(4, v);
+      else if(inp.classList.contains('cimg-h')) img.h = Math.max(4, v);
+      updateDesainPreview();
+    });
+  });
+}
+function syncImageRowInputs(id){
+  const img = ensureCustomImages().find(im=>im.id===id);
+  if(!img) return;
+  const row = document.querySelector(`.custom-img-row[data-img-id="${id}"]`);
+  if(!row) return;
+  const xEl = row.querySelector('.cimg-x'), yEl = row.querySelector('.cimg-y'),
+        wEl = row.querySelector('.cimg-w'), hEl = row.querySelector('.cimg-h');
+  if(xEl) xEl.value = img.x.toFixed(1);
+  if(yEl) yEl.value = img.y.toFixed(1);
+  if(wEl) wEl.value = img.w.toFixed(1);
+  if(hEl) hEl.value = img.h.toFixed(1);
+}
+/* Pasang drag (geser) & resize (besarkan/kecilkan) langsung pakai kursor/jari di atas pratinjau kartu.
+   Dipanggil ulang tiap kali pratinjau digambar ulang karena innerHTML diganti total. */
+function attachImageInteractions(){
+  const area = document.getElementById('designPreviewArea');
+  if(!area) return;
+  const CARD_W = 85.6, CARD_H = 53.98;
+  area.querySelectorAll('.idc-custom-image.editable').forEach(box=>{
+    const id = box.dataset.imgId;
+    const cardEl = box.closest('.idc-front, .idc-back');
+    if(!cardEl) return;
+    const getImg = ()=> ensureCustomImages().find(im=>im.id===id);
+
+    box.addEventListener('pointerdown', (e)=>{
+      if(e.target.closest('.idc-img-resize-handle') || e.target.closest('.idc-img-del')) return;
+      const img = getImg(); if(!img) return;
+      e.preventDefault();
+      const rect = cardEl.getBoundingClientRect();
+      const pxPerMm = rect.width / CARD_W;
+      const startX = e.clientX, startY = e.clientY;
+      const origX = img.x||0, origY = img.y||0;
+      box.setPointerCapture(e.pointerId);
+      function onMove(ev){
+        let nx = origX + (ev.clientX-startX)/pxPerMm;
+        let ny = origY + (ev.clientY-startY)/pxPerMm;
+        const maxX = CARD_W - (img.w||20), maxY = CARD_H - (img.h||20);
+        nx = Math.max(-8, Math.min(maxX+8, nx));
+        ny = Math.max(-8, Math.min(maxY+8, ny));
+        img.x = nx; img.y = ny;
+        box.style.transform = `translate(${nx}mm,${ny}mm)`;
+      }
+      function onUp(ev){
+        box.releasePointerCapture(e.pointerId);
+        box.removeEventListener('pointermove', onMove);
+        box.removeEventListener('pointerup', onUp);
+        syncImageRowInputs(id);
+      }
+      box.addEventListener('pointermove', onMove);
+      box.addEventListener('pointerup', onUp);
+    });
+
+    const delBtn = box.querySelector('.idc-img-del');
+    if(delBtn){
+      delBtn.addEventListener('pointerdown', (e)=>{
+        e.preventDefault(); e.stopPropagation();
+        removeCustomImage(id);
+      });
+    }
+
+    const handle = box.querySelector('.idc-img-resize-handle');
+    if(handle){
+      handle.addEventListener('pointerdown', (e)=>{
+        e.preventDefault(); e.stopPropagation();
+        const img = getImg(); if(!img) return;
+        const rect = cardEl.getBoundingClientRect();
+        const pxPerMm = rect.width / CARD_W;
+        const startX = e.clientX, startY = e.clientY;
+        const origW = img.w||20, origH = img.h||20;
+        const ratio = origW / (origH||1);
+        handle.setPointerCapture(e.pointerId);
+        function onMove(ev){
+          const dw = (ev.clientX-startX)/pxPerMm;
+          let newW = Math.max(5, Math.min(CARD_W, origW + dw));
+          let newH = Math.max(5, Math.min(CARD_H, newW / ratio));
+          img.w = newW; img.h = newH;
+          box.style.width = newW + 'mm';
+          box.style.height = newH + 'mm';
+        }
+        function onUp(){
+          handle.releasePointerCapture(e.pointerId);
+          handle.removeEventListener('pointermove', onMove);
+          handle.removeEventListener('pointerup', onUp);
+          syncImageRowInputs(id);
+        }
+        handle.addEventListener('pointermove', onMove);
+        handle.addEventListener('pointerup', onUp);
+      });
+    }
+  });
+}
+/* Upload dari file (bisa lebih dari satu sekaligus) */
+document.getElementById('inpTambahGambarFile').addEventListener('change', (e)=>{
+  const files = Array.from(e.target.files || []);
+  files.forEach(file=>{
+    const reader = new FileReader();
+    reader.onload = ()=> addCustomImage(reader.result);
+    reader.readAsDataURL(file);
+  });
+  e.target.value = '';
+});
+/* Tombol "Tempel dari Clipboard" — pakai Clipboard API modern */
+document.getElementById('btnTempelGambar').addEventListener('click', async ()=>{
+  try{
+    if(!navigator.clipboard || !navigator.clipboard.read){
+      toast('Browser tidak mendukung tombol ini — coba tekan Ctrl+V di area kartu, atau upload file');
+      return;
+    }
+    const items = await navigator.clipboard.read();
+    let found = false;
+    for(const item of items){
+      const type = item.types.find(t=>t.startsWith('image/'));
+      if(type){
+        const blob = await item.getType(type);
+        const reader = new FileReader();
+        reader.onload = ()=> addCustomImage(reader.result);
+        reader.readAsDataURL(blob);
+        found = true;
+      }
+    }
+    if(!found) toast('Tidak ada gambar di clipboard');
+  }catch(err){
+    console.warn('Gagal membaca clipboard', err);
+    toast('Gagal mengakses clipboard — coba tekan Ctrl+V di area kartu, atau izinkan akses clipboard');
+  }
+});
+/* Tempel langsung (Ctrl+V / Cmd+V) di mana pun ketika halaman Desain Kartu sedang aktif */
+document.addEventListener('paste', (e)=>{
+  const pageDesain = document.getElementById('ap-desain');
+  if(!pageDesain || pageDesain.classList.contains('hide')) return;
+  const clip = e.clipboardData || window.clipboardData;
+  if(!clip || !clip.items) return;
+  let handled = false;
+  for(const item of clip.items){
+    if(item.type && item.type.startsWith('image/')){
+      const file = item.getAsFile();
+      if(!file) continue;
+      const reader = new FileReader();
+      reader.onload = ()=> addCustomImage(reader.result);
+      reader.readAsDataURL(file);
+      handled = true;
+    }
+  }
+  if(handled) e.preventDefault();
+});
+
 function bacaFormDesainSementara(){
   const val = (id)=>{ const el=document.getElementById(id); return el ? el.value : ''; };
   const num = (id, def)=>{ const v = parseFloat(val(id)); return isNaN(v) ? def : v; };
@@ -2111,7 +2371,8 @@ function updateDesainPreview(){
   const d = bacaFormDesainSementara();
   const dummy = {nama:'Nama Siswa Contoh', kelas:'VII-A'};
   const qrPlaceholder = `<span style="font-size:3mm;">▦</span>`;
-  area.innerHTML = `<div class="idc-pair">${idcFrontHTML(dummy, qrPlaceholder, d)}${idcBackHTML(d)}</div>`;
+  area.innerHTML = `<div class="idc-pair">${idcFrontHTML(dummy, qrPlaceholder, d, true)}${idcBackHTML(d, true)}</div>`;
+  attachImageInteractions();
 }
 
 function renderDesainForm(){
