@@ -363,17 +363,95 @@ input[type=color]{width:44px;height:38px;padding:2px;border:1.5px solid var(--li
 .idc-back-footer .bf-credit{font-size:1.05mm;font-weight:500;color:rgba(255,255,255,.75);margin-top:.5mm;letter-spacing:.1px;}
 
 @media print{
-  *{
-    -webkit-print-color-adjust:exact !important;
-    print-color-adjust:exact !important;
-    color-adjust:exact !important;
-  }
   body *{visibility:hidden;}
   #printArea, #printArea *, #printAreaRekap, #printAreaRekap *{visibility:visible;}
 
   #printArea{position:absolute;top:0;left:0;width:100%;}
   #printAreaRekap{position:absolute !important;top:0;left:0;width:100%;}
   .admin-sidebar,.admin-topbar,.toast,.sidebar-overlay{display:none;}
+  
+  /* Preserve colors and backgrounds for ID cards */
+  .idc-front, .idc-back {
+    background: #f4f6fb !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+  
+  .idc-wave-top {
+    background: linear-gradient(120deg, #082B73 60%, #1247A6 100%) !important;
+    -webkit-print-color-adjust: exact !important;
+  }
+  
+  .idc-wave-top::after {
+    background: linear-gradient(90deg, #FDB813, #f6cf5f) !important;
+    -webkit-print-color-adjust: exact !important;
+  }
+  
+  .idc-wave-bottom {
+    background: #082B73 !important;
+    -webkit-print-color-adjust: exact !important;
+  }
+  
+  .idc-wave-bottom::before {
+    background: linear-gradient(90deg, #f6cf5f, #FDB813) !important;
+    -webkit-print-color-adjust: exact !important;
+  }
+  
+  .idc-yearpill {
+    background: #082B73 !important;
+    color: #FDB813 !important;
+    -webkit-print-color-adjust: exact !important;
+  }
+  
+  .idc-field .ic {
+    background: #082B73 !important;
+    color: #fff !important;
+    -webkit-print-color-adjust: exact !important;
+  }
+  
+  .idc-field .fv {
+    border-bottom-color: #082B73 !important;
+    color: #082B73 !important;
+    -webkit-print-color-adjust: exact !important;
+  }
+  
+  .idc-qrbox {
+    background: #fff !important;
+    border-color: #082B73 !important;
+    -webkit-print-color-adjust: exact !important;
+  }
+  
+  .idc-qrbox .lbl {
+    color: #082B73 !important;
+    -webkit-print-color-adjust: exact !important;
+  }
+  
+  .idc-footer {
+    color: #fff !important;
+    -webkit-print-color-adjust: exact !important;
+  }
+  
+  .idc-head .t1 {
+    color: #082B73 !important;
+    -webkit-print-color-adjust: exact !important;
+  }
+  
+  .idc-head .t2 {
+    color: #1247A6 !important;
+    -webkit-print-color-adjust: exact !important;
+  }
+  
+  .idc-field {
+    color: #082B73 !important;
+    -webkit-print-color-adjust: exact !important;
+  }
+  
+  .idc-field .ic {
+    background: #082B73 !important;
+    color: #fff !important;
+    -webkit-print-color-adjust: exact !important;
+  }
 }
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
