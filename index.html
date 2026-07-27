@@ -363,6 +363,11 @@ input[type=color]{width:44px;height:38px;padding:2px;border:1.5px solid var(--li
 .idc-back-footer .bf-credit{font-size:1.05mm;font-weight:500;color:rgba(255,255,255,.75);margin-top:.5mm;letter-spacing:.1px;}
 
 @media print{
+  *{
+    -webkit-print-color-adjust:exact !important;
+    print-color-adjust:exact !important;
+    color-adjust:exact !important;
+  }
   body *{visibility:hidden;}
   #printArea, #printArea *, #printAreaRekap, #printAreaRekap *{visibility:visible;}
 
