@@ -1061,16 +1061,16 @@ function nowTimeServer(){ return serverNowDate().toTimeString().slice(0,5); }
 function todayStrServer(){ return serverNowDate().toISOString().slice(0,10); }
 
 /* ================= JADWAL JAM MASUK/PULANG PER HARI =================
-   Senin–Kamis: Masuk 07:00–07:15, Pulang 15:10–16:00
-   Jumat      : Masuk 07:00–07:15, Pulang 11:00–16:00 */
+   Senin–Kamis: Masuk 06:40–07:15, Pulang 14:30–18:00
+   Jumat      : Masuk 06:40–07:15, Pulang 10:30–16:00 */
 const HARI_KEY_URUT = ['senin','selasa','rabu','kamis','jumat'];
 const HARI_KEY_LABEL = {senin:'Senin', selasa:'Selasa', rabu:'Rabu', kamis:'Kamis', jumat:'Jumat'};
 const JADWAL_DEFAULT = {
-  senin:  {masuk_mulai:'06:00', masuk_selesai:'07:15', pulang_mulai:'15:00', pulang_selesai:'16:00'},
-  selasa: {masuk_mulai:'06:00', masuk_selesai:'07:15', pulang_mulai:'15:00', pulang_selesai:'16:00'},
-  rabu:   {masuk_mulai:'06:00', masuk_selesai:'07:15', pulang_mulai:'15:00', pulang_selesai:'16:00'},
-  kamis:  {masuk_mulai:'06:00', masuk_selesai:'07:15', pulang_mulai:'15:00', pulang_selesai:'16:00'},
-  jumat:  {masuk_mulai:'06:00', masuk_selesai:'07:15', pulang_mulai:'10:30', pulang_selesai:'16:00'},
+  senin:  {masuk_mulai:'06:40', masuk_selesai:'07:15', pulang_mulai:'14:40', pulang_selesai:'18:00'},
+  selasa: {masuk_mulai:'06:40', masuk_selesai:'07:15', pulang_mulai:'15:00', pulang_selesai:'18:00'},
+  rabu:   {masuk_mulai:'06:40', masuk_selesai:'07:15', pulang_mulai:'15:00', pulang_selesai:'18:00'},
+  kamis:  {masuk_mulai:'06:40', masuk_selesai:'07:15', pulang_mulai:'15:00', pulang_selesai:'18:00'},
+  jumat:  {masuk_mulai:'06:40', masuk_selesai:'07:15', pulang_mulai:'10:30', pulang_selesai:'18:00'},
 };
 let JADWAL_HARI = JSON.parse(JSON.stringify(JADWAL_DEFAULT));
 
