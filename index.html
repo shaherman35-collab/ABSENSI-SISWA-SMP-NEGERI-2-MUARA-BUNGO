@@ -730,6 +730,12 @@ input[type=color]{width:44px;height:38px;padding:2px;border:1.5px solid var(--li
           </div>
 
           <div class="card" style="margin-top:16px;">
+            <h2 style="margin:0 0 4px;font-size:1rem;">⚠️ Siswa Tidak/Belum Absen Hari Ini (per Kelas)</h2>
+            <p style="margin:0 0 12px;font-size:.8rem;color:var(--muted);">Menampilkan siswa yang belum melakukan absensi hari ini, dikelompokkan per kelas, agar guru langsung tahu di kelas mana saja ada siswa yang tidak absen. Gunakan filter Kelas di bawah untuk mempersempit tampilan.</p>
+            <div id="rekapBelumAbsenGrid"></div>
+          </div>
+
+          <div class="card" style="margin-top:16px;">
             <h2 style="margin:0 0 12px;font-size:1rem;">Rekap Terpisah per Jenis Absensi (Hari Ini)</h2>
             <div class="stat-row" style="grid-template-columns:repeat(3,1fr);">
               <div class="stat-card"><div class="ic-wrap" style="background:#e7ecfb;color:var(--navy-3);">🌅</div>
@@ -1584,6 +1590,32 @@ function renderRekapHariIni(){
   document.getElementById('statSholat').textContent = sholat;
   document.getElementById('statPulang').textContent = pulang;
   document.getElementById('statDispensasi').textContent = dispensasi;
+  renderBelumAbsenPerKelas(siswaAll, absenHariIni);
+}
+
+function renderBelumAbsenPerKelas(siswaAll, absenHariIni){
+  const grid = document.getElementById('rekapBelumAbsenGrid');
+  if(!grid) return;
+  const sudahSet = new Set(absenHariIni.map(a=>a.nama+'|'+a.kelas));
+  const belum = siswaAll.filter(s=>!sudahSet.has(s.nama+'|'+s.kelas));
+  if(belum.length===0){
+    grid.innerHTML = '<div class="empty">🎉 Semua siswa sudah absen hari ini</div>';
+    return;
+  }
+  const kelasList = [...new Set(belum.map(s=>s.kelas))].sort();
+  grid.innerHTML = `<div style="margin-bottom:10px;font-size:.8rem;color:var(--muted);">Total <b>${belum.length}</b> siswa belum absen, tersebar di <b>${kelasList.length}</b> kelas.</div>` +
+    kelasList.map(k=>{
+      const list = belum.filter(s=>s.kelas===k).sort((a,b)=>a.nama.localeCompare(b.nama));
+      return `<div class="scanner-card" style="margin-bottom:10px;">
+        <div class="name" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+          <span>🏫 ${k}</span>
+          <span class="pill" style="background:var(--danger-bg);color:var(--danger);">${list.length} belum absen</span>
+        </div>
+        <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;">
+          ${list.map(s=>`<span class="pill" style="background:#eef2f7;color:#556;">${s.nama}</span>`).join('')}
+        </div>
+      </div>`;
+    }).join('');
 }
 
 /* ================= REKAP MULTI-PERIODE ================= */
@@ -1615,10 +1647,12 @@ function computeRekapRange(){
 }
 
 let rekapRows = [];
+let rekapRange = {dari:'', sampai:''};
 async function tampilkanRekap(){
   if(!sb){ toast('Supabase belum dikonfigurasi'); return; }
   const {dari, sampai} = computeRekapRange();
   if(!dari || !sampai){ toast('Isi rentang tanggal dulu'); return; }
+  rekapRange = {dari, sampai};
   let q = sb.from('absen').select('*').gte('tanggal', dari).lte('tanggal', sampai)
     .order('tanggal', {ascending:false}).order('jam', {ascending:false});
   const kelas = document.getElementById('selKelasRekap').value;
@@ -1648,14 +1682,55 @@ document.getElementById('btnRefreshRekap').addEventListener('click', tampilkanRe
 document.getElementById('selRekapPeriode').addEventListener('change', computeRekapRange);
 document.getElementById('selKelasRekap').addEventListener('change', renderRekapHariIni);
 
-document.getElementById('btnExportRekap').addEventListener('click', ()=>{
+/* Menghitung daftar siswa yang TIDAK ADA catatan absensi sama sekali pada tiap
+   tanggal dalam rentang rekap saat ini (bukan hanya yang sudah ditandai Alpha),
+   supaya guru tahu persis siswa mana & di kelas mana yang tidak absen. */
+async function computeTidakAbsenRows(dari, sampai){
+  if(!sb || !dari || !sampai) return [];
+  const kelasFilter = document.getElementById('selKelasRekap').value;
+  const namaFilter = document.getElementById('inpRekapNama').value.trim().toLowerCase();
+  let siswaScope = kelasFilter ? siswaCache.filter(s=>s.kelas===kelasFilter) : siswaCache;
+  if(namaFilter) siswaScope = siswaScope.filter(s=>s.nama.toLowerCase().includes(namaFilter));
+  if(siswaScope.length===0) return [];
+
+  let q = sb.from('absen').select('nama,kelas,tanggal').gte('tanggal', dari).lte('tanggal', sampai);
+  if(kelasFilter) q = q.eq('kelas', kelasFilter);
+  const {data, error} = await q.limit(20000);
+  if(error){ console.error(error); return []; }
+  const hadirSet = new Set((data||[]).map(a=>`${a.tanggal}|${a.nama}|${a.kelas}`));
+
+  const dates = [];
+  let cur = new Date(dari+'T00:00:00');
+  const end = new Date(sampai+'T00:00:00');
+  while(cur <= end && dates.length < 366){ dates.push(cur.toISOString().slice(0,10)); cur.setDate(cur.getDate()+1); }
+
+  const rows = [];
+  outer: for(const tgl of dates){
+    for(const s of siswaScope){
+      if(!hadirSet.has(`${tgl}|${s.nama}|${s.kelas}`)){
+        rows.push({Tanggal:tgl, Nama:s.nama, Kelas:s.kelas, Jam:'-', Jenis:'-', Status:'Tidak Absen', Cara:'-', Petugas:'-', Keterangan:'Tidak ada catatan absensi pada tanggal ini'});
+        if(rows.length>=5000) break outer;
+      }
+    }
+  }
+  return rows;
+}
+
+document.getElementById('btnExportRekap').addEventListener('click', async ()=>{
   if(rekapRows.length===0){ toast('Tampilkan rekap dulu sebelum export'); return; }
   const data = rekapRows.map(a=>({Tanggal:a.tanggal, Nama:a.nama, Kelas:a.kelas, Jam:a.jam, Jenis:a.jenis||'-', Status:a.status, Cara:a.cara||'-', Petugas:a.scanner||'-', Keterangan:a.keterangan||''}));
-  const ws = XLSX.utils.json_to_sheet(data);
+  toast('Menyiapkan data siswa tidak absen...');
+  const tidakAbsen = await computeTidakAbsenRows(rekapRange.dari, rekapRange.sampai);
+  const gabungan = data.concat(tidakAbsen).sort((a,b)=>{
+    if(a.Tanggal!==b.Tanggal) return b.Tanggal.localeCompare(a.Tanggal);
+    if(a.Kelas!==b.Kelas) return a.Kelas.localeCompare(b.Kelas);
+    return a.Nama.localeCompare(b.Nama);
+  });
+  const ws = XLSX.utils.json_to_sheet(gabungan);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Rekap');
   XLSX.writeFile(wb, `rekap-absensi-${todayStr()}.xlsx`);
-  logAktivitas('export_rekap', `Export Excel rekap (${rekapRows.length} baris)`);
+  logAktivitas('export_rekap', `Export Excel rekap (${data.length} tercatat + ${tidakAbsen.length} tidak absen)`);
 });
 
 document.getElementById('btnExportPdf').addEventListener('click', ()=>{
