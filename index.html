@@ -1067,20 +1067,20 @@ function nowTimeServer(){ return serverNowDate().toTimeString().slice(0,5); }
 function todayStrServer(){ return serverNowDate().toISOString().slice(0,10); }
 
 /* ================= JADWAL JAM MASUK/PULANG PER HARI =================
-   Senin–Kamis: Masuk 06:40–07:15, Pulang 14:30–18:00
-   Jumat      : Masuk 06:40–07:15, Pulang 10:30–16:00 */
+   Senin–Kamis: Masuk 06:30–07:15, Pulang 14:30–18:00
+   Jumat      : Masuk 06:30–07:15, Pulang 10:30–16:00 */
 const HARI_KEY_URUT = ['senin','selasa','rabu','kamis','jumat'];
 const HARI_KEY_LABEL = {senin:'Senin', selasa:'Selasa', rabu:'Rabu', kamis:'Kamis', jumat:'Jumat'};
 const JADWAL_DEFAULT = {
-  senin:  {masuk_mulai:'06:40', masuk_selesai:'07:15', pulang_mulai:'14:40', pulang_selesai:'18:00'},
-  selasa: {masuk_mulai:'06:40', masuk_selesai:'07:15', pulang_mulai:'15:00', pulang_selesai:'18:00'},
-  rabu:   {masuk_mulai:'06:40', masuk_selesai:'07:15', pulang_mulai:'15:00', pulang_selesai:'18:00'},
-  kamis:  {masuk_mulai:'06:40', masuk_selesai:'07:15', pulang_mulai:'15:00', pulang_selesai:'18:00'},
-  jumat:  {masuk_mulai:'06:40', masuk_selesai:'07:15', pulang_mulai:'10:30', pulang_selesai:'18:00'},
+  senin:  {masuk_mulai:'06:30', masuk_selesai:'07:15', pulang_mulai:'14:20', pulang_selesai:'18:00'},
+  selasa: {masuk_mulai:'06:30', masuk_selesai:'07:15', pulang_mulai:'14:40', pulang_selesai:'18:00'},
+  rabu:   {masuk_mulai:'06:30', masuk_selesai:'07:15', pulang_mulai:'14:40', pulang_selesai:'18:00'},
+  kamis:  {masuk_mulai:'06:30', masuk_selesai:'07:15', pulang_mulai:'14:40', pulang_selesai:'18:00'},
+  jumat:  {masuk_mulai:'06:30', masuk_selesai:'07:15', pulang_mulai:'10:30', pulang_selesai:'18:00'},
 };
 let JADWAL_HARI = JSON.parse(JSON.stringify(JADWAL_DEFAULT));
 
-/* Jadwal Absen Sholat: tetap (tidak per-hari), Senin-Jumat pukul 11.30-13.00 WIB */
+/* Jadwal Absen Sholat: tetap (tidak per-hari), Senin-Jumat pukul 11.30-13.30 WIB */
 const SHOLAT_MULAI = '11:30';
 const SHOLAT_SELESAI = '13:00';
 
@@ -1820,11 +1820,11 @@ function renderJadwalPengaturan(){
     <div class="card" style="background:var(--bg-2,rgba(0,0,0,.02));margin-bottom:12px;">
       <h3 style="margin:0 0 10px;font-size:.9rem;color:var(--navy);">${HARI_KEY_LABEL[h]}</h3>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
-        <div><label class="field">Batas Terlambat</label><input type="text" class="jdw-batas" data-hari="${h}" value="${j.batas}" placeholder="07:00"></div>
-        <div><label class="field">Masuk — Mulai</label><input type="text" class="jdw-masuk-mulai" data-hari="${h}" value="${j.masuk_mulai}" placeholder="07:00"></div>
-        <div><label class="field">Masuk — Selesai</label><input type="text" class="jdw-masuk-selesai" data-hari="${h}" value="${j.masuk_selesai}" placeholder="07:15"></div>
-        <div><label class="field">Pulang — Mulai</label><input type="text" class="jdw-pulang-mulai" data-hari="${h}" value="${j.pulang_mulai}" placeholder="15:10"></div>
-        <div><label class="field">Pulang — Selesai</label><input type="text" class="jdw-pulang-selesai" data-hari="${h}" value="${j.pulang_selesai}" placeholder="16:00"></div>
+        <div><label class="field">Batas Terlambat</label><input type="text" class="jdw-batas" data-hari="${h}" value="${j.batas}" placeholder="07:15"></div>
+        <div><label class="field">Masuk — Mulai</label><input type="text" class="jdw-masuk-mulai" data-hari="${h}" value="${j.masuk_mulai}" placeholder="06:30"></div>
+        <div><label class="field">Masuk — Selesai</label><input type="text" class="jdw-masuk-selesai" data-hari="${h}" value="${j.masuk_selesai}" placeholder="08:00"></div>
+        <div><label class="field">Pulang — Mulai</label><input type="text" class="jdw-pulang-mulai" data-hari="${h}" value="${j.pulang_mulai}" placeholder="14:30"></div>
+        <div><label class="field">Pulang — Selesai</label><input type="text" class="jdw-pulang-selesai" data-hari="${h}" value="${j.pulang_selesai}" placeholder="18:00"></div>
       </div>
     </div>`;
   }).join('');
