@@ -1071,14 +1071,23 @@ function todayStrServer(){ return serverNowDate().toISOString().slice(0,10); }
    Jumat      : Masuk 06:30–07:15, Pulang 10:30–16:00 */
 const HARI_KEY_URUT = ['senin','selasa','rabu','kamis','jumat'];
 const HARI_KEY_LABEL = {senin:'Senin', selasa:'Selasa', rabu:'Rabu', kamis:'Kamis', jumat:'Jumat'};
+/* PENTING (nilai di bawah HANYA fallback):
+   - masuk_mulai   = awal jendela scanner dibuka
+   - batas         = HANYA menentukan status Hadir/Terlambat, BUKAN penutup scanner
+   - masuk_selesai = batas AKHIR jendela scanner (setelah jam ini scan Pagi ditolak)
+   Sumber utama jam absensi adalah tabel `settings` di Supabase (lihat loadJamMasuk()).
+   Nilai JADWAL_DEFAULT ini hanya dipakai sebagai cadangan jika baris konfigurasi
+   di Supabase belum ada / belum sempat dimuat — bukan sumber utama. */
 const JADWAL_DEFAULT = {
-  senin:  {masuk_mulai:'06:30', masuk_selesai:'07:15', pulang_mulai:'14:20', pulang_selesai:'18:00'},
-  selasa: {masuk_mulai:'06:30', masuk_selesai:'07:15', pulang_mulai:'14:40', pulang_selesai:'18:00'},
-  rabu:   {masuk_mulai:'06:30', masuk_selesai:'07:15', pulang_mulai:'14:40', pulang_selesai:'18:00'},
-  kamis:  {masuk_mulai:'06:30', masuk_selesai:'07:15', pulang_mulai:'14:40', pulang_selesai:'18:00'},
-  jumat:  {masuk_mulai:'06:30', masuk_selesai:'07:15', pulang_mulai:'10:30', pulang_selesai:'18:00'},
+  senin:  {masuk_mulai:'06:30', batas:'07:15', masuk_selesai:'08:00', pulang_mulai:'14:20', pulang_selesai:'18:00'},
+  selasa: {masuk_mulai:'06:30', batas:'07:15', masuk_selesai:'08:00', pulang_mulai:'14:40', pulang_selesai:'18:00'},
+  rabu:   {masuk_mulai:'06:30', batas:'07:15', masuk_selesai:'08:00', pulang_mulai:'14:40', pulang_selesai:'18:00'},
+  kamis:  {masuk_mulai:'06:30', batas:'07:15', masuk_selesai:'08:00', pulang_mulai:'14:40', pulang_selesai:'18:00'},
+  jumat:  {masuk_mulai:'06:30', batas:'07:15', masuk_selesai:'08:00', pulang_mulai:'10:30', pulang_selesai:'18:00'},
 };
 let JADWAL_HARI = JSON.parse(JSON.stringify(JADWAL_DEFAULT));
+/* true setelah loadJamMasuk() pernah sukses dijalankan minimal sekali di sesi ini */
+let jamMasukSudahDimuat = false;
 
 /* Jadwal Absen Sholat: tetap (tidak per-hari), Senin-Jumat pukul 11.30-13.30 WIB */
 const SHOLAT_MULAI = '11:30';
@@ -1092,8 +1101,15 @@ function cekJendelaAbsen(jenis, jam, j){
     return {ok:false, pesan:`Jadwal absensi Sholat belum dibuka atau telah ditutup (jam ${SHOLAT_MULAI}-${SHOLAT_SELESAI} WIB)`};
   }
   if(jenis==='Pagi'){
-    if(jam>=j.masuk_mulai && jam<=j.masuk_selesai) return {ok:true};
-    return {ok:false, pesan:`Jadwal absensi Pagi belum dibuka atau telah ditutup (jam ${j.masuk_mulai}-${j.masuk_selesai} WIB)`};
+    /* Jendela scanner Pagi: masuk_mulai s/d masuk_selesai (batas TIDAK menutup scanner,
+       batas hanya dipakai untuk menentukan status Hadir/Terlambat — lihat onScanSuccess). */
+    if(jam < j.masuk_mulai){
+      return {ok:false, pesan:`Jadwal absensi Pagi belum dibuka (mulai jam ${j.masuk_mulai} WIB)`};
+    }
+    if(jam > j.masuk_selesai){
+      return {ok:false, pesan:`Jadwal absensi Pagi telah ditutup (jam ${j.masuk_mulai}-${j.masuk_selesai} WIB)`};
+    }
+    return {ok:true};
   }
   if(jenis==='Pulang'){
     if(jam>=j.pulang_mulai && jam<=j.pulang_selesai) return {ok:true};
@@ -1112,15 +1128,27 @@ function jadwalHariIni(){
   return key ? JADWAL_HARI[key] : null;
 }
 
+/* Memuat jam absensi dari Supabase (sumber utama). Nilai hard-code di JADWAL_DEFAULT
+   hanya dipakai untuk field yang belum ada baris konfigurasinya di Supabase.
+   Dipanggil setiap kali kiosk scan dibuka, setiap heartbeat, dan setiap kali admin
+   membuka menu Pengaturan, supaya jam yang dipakai selalu jam terbaru dari Supabase
+   dan tidak pernah "nyangkut" di jam lama walaupun tanpa reload penuh. */
 async function loadJamMasuk(){
-  if(!sb) return;
+  if(!sb) return false;
   const keys = [];
   HARI_KEY_URUT.forEach(h=>{ keys.push(`jadwal_${h}_batas`,`jadwal_${h}_masuk_mulai`,`jadwal_${h}_masuk_selesai`,`jadwal_${h}_pulang_mulai`,`jadwal_${h}_pulang_selesai`); });
-  const {data} = await sb.from('settings').select('key,value').in('key', keys);
+  const {data, error} = await sb.from('settings').select('key,value').in('key', keys);
+  if(error){
+    console.error('Gagal memuat pengaturan jam dari Supabase', error);
+    toast('Gagal memuat pengaturan jam — memakai jam terakhir yang diketahui');
+    return false;
+  }
   (data||[]).forEach(r=>{
     const m = r.key.match(/^jadwal_(senin|selasa|rabu|kamis|jumat)_(batas|masuk_mulai|masuk_selesai|pulang_mulai|pulang_selesai)$/);
     if(m && r.value){ JADWAL_HARI[m[1]][m[2]] = r.value; }
   });
+  jamMasukSudahDimuat = true;
+  return true;
 }
 /* Tentukan jenis absensi (Masuk/Pulang) berdasarkan jam & hari saat ini. null = di luar jam absensi / bukan hari sekolah. */
 function tentukanJenisAbsen(jam){
@@ -1367,7 +1395,7 @@ function showAdminPage(name){
   if(name==='log') renderLogAktivitas();
   if(name==='cetak') refreshKelasSelect();
   if(name==='desain') renderDesainForm();
-  if(name==='pengaturan') renderJadwalPengaturan();
+  if(name==='pengaturan'){ renderJadwalPengaturan(true); loadJamMasuk().then(()=>renderJadwalPengaturan(false)); }
 }
 document.querySelectorAll('.admin-nav button').forEach(btn=>{
   btn.addEventListener('click', ()=>{ showAdminPage(btn.dataset.p); closeAdminSidebar(); });
@@ -1812,19 +1840,24 @@ async function renderArsipRekap(){
 }
 
 /* ================= PENGATURAN (JADWAL PER HARI) ================= */
-function renderJadwalPengaturan(){
+function renderJadwalPengaturan(memuat){
   const wrap = document.getElementById('jadwalHariWrap');
+  if(memuat && !jamMasukSudahDimuat){
+    wrap.innerHTML = '<div class="empty">Memuat pengaturan jam terbaru dari server…</div>';
+    return;
+  }
   wrap.innerHTML = HARI_KEY_URUT.map(h=>{
-    const j = JADWAL_HARI[h];
+    const j = JADWAL_HARI[h] || JADWAL_DEFAULT[h];
+    const d = JADWAL_DEFAULT[h];
     return `
     <div class="card" style="background:var(--bg-2,rgba(0,0,0,.02));margin-bottom:12px;">
       <h3 style="margin:0 0 10px;font-size:.9rem;color:var(--navy);">${HARI_KEY_LABEL[h]}</h3>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
-        <div><label class="field">Batas Terlambat</label><input type="text" class="jdw-batas" data-hari="${h}" value="${j.batas}" placeholder="07:15"></div>
-        <div><label class="field">Masuk — Mulai</label><input type="text" class="jdw-masuk-mulai" data-hari="${h}" value="${j.masuk_mulai}" placeholder="06:30"></div>
-        <div><label class="field">Masuk — Selesai</label><input type="text" class="jdw-masuk-selesai" data-hari="${h}" value="${j.masuk_selesai}" placeholder="08:00"></div>
-        <div><label class="field">Pulang — Mulai</label><input type="text" class="jdw-pulang-mulai" data-hari="${h}" value="${j.pulang_mulai}" placeholder="14:30"></div>
-        <div><label class="field">Pulang — Selesai</label><input type="text" class="jdw-pulang-selesai" data-hari="${h}" value="${j.pulang_selesai}" placeholder="18:00"></div>
+        <div><label class="field">Masuk — Mulai</label><input type="text" class="jdw-masuk-mulai" data-hari="${h}" value="${j.masuk_mulai||d.masuk_mulai}" placeholder="${d.masuk_mulai}"></div>
+        <div><label class="field">Batas Terlambat</label><input type="text" class="jdw-batas" data-hari="${h}" value="${j.batas||d.batas}" placeholder="${d.batas}"></div>
+        <div><label class="field">Masuk — Selesai</label><input type="text" class="jdw-masuk-selesai" data-hari="${h}" value="${j.masuk_selesai||d.masuk_selesai}" placeholder="${d.masuk_selesai}"></div>
+        <div><label class="field">Pulang — Mulai</label><input type="text" class="jdw-pulang-mulai" data-hari="${h}" value="${j.pulang_mulai||d.pulang_mulai}" placeholder="${d.pulang_mulai}"></div>
+        <div><label class="field">Pulang — Selesai</label><input type="text" class="jdw-pulang-selesai" data-hari="${h}" value="${j.pulang_selesai||d.pulang_selesai}" placeholder="${d.pulang_selesai}"></div>
       </div>
     </div>`;
   }).join('');
@@ -1832,6 +1865,7 @@ function renderJadwalPengaturan(){
 
 document.getElementById('btnSimpanPengaturan').addEventListener('click', async ()=>{
   if(!sb){ toast('Supabase belum dikonfigurasi'); return; }
+  const btn = document.getElementById('btnSimpanPengaturan');
   const rows = [];
   const newJadwal = {};
   let formatOk = true;
@@ -1844,6 +1878,7 @@ document.getElementById('btnSimpanPengaturan').addEventListener('click', async (
     [batas, masuk_mulai, masuk_selesai, pulang_mulai, pulang_selesai].forEach(v=>{
       if(!/^\d{2}:\d{2}$/.test(v)) formatOk = false;
     });
+    if(masuk_mulai > batas || batas > masuk_selesai){ formatOk = false; }
     newJadwal[h] = {batas, masuk_mulai, masuk_selesai, pulang_mulai, pulang_selesai};
     rows.push({key:`jadwal_${h}_batas`, value:batas});
     rows.push({key:`jadwal_${h}_masuk_mulai`, value:masuk_mulai});
@@ -1851,12 +1886,31 @@ document.getElementById('btnSimpanPengaturan').addEventListener('click', async (
     rows.push({key:`jadwal_${h}_pulang_mulai`, value:pulang_mulai});
     rows.push({key:`jadwal_${h}_pulang_selesai`, value:pulang_selesai});
   });
-  if(!formatOk){ toast('Format jam salah, contoh: 07:00'); return; }
-  const {error} = await sb.from('settings').upsert(rows);
-  if(error){ console.error(error); toast('Gagal menyimpan pengaturan'); return; }
-  JADWAL_HARI = newJadwal;
-  await logAktivitas('pengaturan', 'Mengubah jadwal jam absensi per hari');
-  toast('Pengaturan jadwal disimpan untuk semua perangkat');
+  if(!formatOk){ toast('Format jam salah atau urutan tidak masuk akal. Pastikan Masuk-Mulai ≤ Batas Terlambat ≤ Masuk-Selesai (contoh: 06:30 / 07:15 / 08:00)'); return; }
+  btn.disabled = true;
+  const teksAsli = btn.textContent;
+  btn.textContent = 'Menyimpan…';
+  try{
+    const {error} = await sb.from('settings').upsert(rows, {onConflict:'key'});
+    if(error){
+      console.error(error);
+      toast('Gagal menyimpan pengaturan ke Supabase — perubahan TIDAK tersimpan. Coba lagi.');
+      return;
+    }
+    /* Jangan langsung percaya nilai lokal — ambil ulang dari Supabase supaya
+       yang tersimpan di server benar-benar sesuai yang ditampilkan/dipakai scanner. */
+    const berhasilMuatUlang = await loadJamMasuk();
+    if(!berhasilMuatUlang){
+      toast('Tersimpan, tapi gagal memuat ulang konfirmasi dari server. Silakan buka ulang halaman Pengaturan.');
+    } else {
+      renderJadwalPengaturan(false);
+      await logAktivitas('pengaturan', 'Mengubah jadwal jam absensi per hari');
+      toast('Pengaturan jadwal tersimpan permanen & langsung dipakai scanner');
+    }
+  } finally {
+    btn.disabled = false;
+    btn.textContent = teksAsli;
+  }
 });
 function wrap_val(cls, hari){
   const el = document.querySelector(`.${cls}[data-hari="${hari}"]`);
