@@ -141,7 +141,7 @@ th{color:var(--muted);font-weight:700;font-size:.7rem;text-transform:uppercase;l
   color:var(--navy);background:var(--gold-2);border-radius:6px;padding:4px;margin-top:-4px;}
 .lp-stats{max-width:1180px;margin:0 auto;padding:0 24px 40px;}
 .lp-stats-grid{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
-  display:grid;grid-template-columns:repeat(4,1fr);box-shadow:0 1px 3px rgba(15,23,42,.05);}
+  display:grid;grid-template-columns:repeat(3,1fr);box-shadow:0 1px 3px rgba(15,23,42,.05);}
 .lp-stat{padding:20px;text-align:center;border-right:1px solid var(--line);}
 .lp-stat:last-child{border-right:none;}
 .lp-stat .num{font-size:1.7rem;font-weight:900;color:var(--navy);}
@@ -159,6 +159,7 @@ th{color:var(--muted);font-weight:700;font-size:.7rem;text-transform:uppercase;l
   .lp-card-mock{margin:0 auto;}
   .lp-stats-grid{grid-template-columns:repeat(2,1fr);}
   .lp-stat:nth-child(2){border-right:none;}
+  .lp-stat:nth-child(3){grid-column:1 / -1;border-top:1px solid var(--line);}
   .lp-feat-grid{grid-template-columns:repeat(2,1fr);}
   .lp-nav-links{display:none;}
 }
@@ -423,7 +424,6 @@ input[type=color]{width:44px;height:38px;padding:2px;border:1.5px solid var(--li
       <div class="lp-stat"><div class="num" id="lpTotalSiswa">0</div><div class="lbl">Total Siswa Aktif</div></div>
       <div class="lp-stat"><div class="num" id="lpTotalKelas">0</div><div class="lbl">Total Kelas</div></div>
       <div class="lp-stat"><div class="num" id="lpScannerAktif">0</div><div class="lbl">Scanner Aktif</div></div>
-      <div class="lp-stat"><div class="num" id="lpAbsenHariIni">0</div><div class="lbl">Absensi Hari Ini</div></div>
     </div>
   </div>
 
@@ -615,9 +615,9 @@ input[type=color]{width:44px;height:38px;padding:2px;border:1.5px solid var(--li
             <div class="stat-card"><div class="ic-wrap" style="background:#e7f7ee;color:var(--success);">📷</div>
               <div><div class="num" id="dashScannerAktif">0</div><div class="lbl">Scanner Aktif</div><div class="sub">Perangkat Online</div></div></div>
             <div class="stat-card"><div class="ic-wrap" style="background:#fdf3e2;color:#b8791f;">✅</div>
-              <div><div class="num" id="dashHadirHariIni">0</div><div class="lbl">Hadir Hari Ini</div><div class="sub" id="dashHadirPct">0% dari total siswa</div></div></div>
+              <div><div class="num" id="dashHadirHariIni">0</div><div class="lbl">Sudah Absen Pagi</div><div class="sub" id="dashHadirPct">0% dari total siswa</div></div></div>
             <div class="stat-card"><div class="ic-wrap" style="background:var(--danger-bg);color:var(--danger);">👥</div>
-              <div><div class="num" id="dashBelumHadir">0</div><div class="lbl">Belum Hadir</div><div class="sub" id="dashBelumPct">0% dari total siswa</div></div></div>
+              <div><div class="num" id="dashBelumHadir">0</div><div class="lbl">Belum Absen Pagi</div><div class="sub" id="dashBelumPct">0% dari total siswa</div></div></div>
             <div class="stat-card"><div class="ic-wrap" style="background:#fdf3e2;color:#b8791f;">⏰</div>
               <div><div class="num" id="dashTerlambat">0</div><div class="lbl">Terlambat</div><div class="sub">Hari ini</div></div></div>
             <div class="stat-card"><div class="ic-wrap" style="background:#e7f0fb;color:#2b6cb0;">🤒</div>
@@ -647,7 +647,7 @@ input[type=color]{width:44px;height:38px;padding:2px;border:1.5px solid var(--li
             </div>
             <div class="side-stack">
               <div class="card">
-                <h3 style="margin:0 0 8px;font-size:.85rem;font-weight:800;color:var(--navy);">Siswa Belum Hadir</h3>
+                <h3 style="margin:0 0 8px;font-size:.85rem;font-weight:800;color:var(--navy);">Siswa Belum Absen Pagi</h3>
                 <div id="dashBelumHadirList"></div>
               </div>
               <div class="card">
@@ -723,7 +723,12 @@ input[type=color]{width:44px;height:38px;padding:2px;border:1.5px solid var(--li
         <!-- REKAP -->
         <section class="admin-page hide" id="ap-rekap">
           <div class="card">
-            <h2 style="margin:0 0 12px;font-size:1rem;">Rekap Hari Ini (ringkas)</h2>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
+              <h2 style="margin:0;font-size:1rem;">Rekap Hari Ini (ringkas)</h2>
+              <select id="selHariIniJenis" style="width:auto;min-width:170px;">
+                <option value="Pagi">Absen Pagi</option><option value="Sholat">Absen Sholat</option><option value="Pulang">Absen Pulang</option>
+              </select>
+            </div>
             <div class="stat-row" style="grid-template-columns:repeat(4,1fr);">
               <div class="stat-card"><div class="ic-wrap" style="background:#e7f7ee;color:var(--success);">✅</div>
                 <div><div class="num" id="statHadir">0</div><div class="lbl">Hadir</div></div></div>
@@ -738,7 +743,7 @@ input[type=color]{width:44px;height:38px;padding:2px;border:1.5px solid var(--li
 
           <div class="card" style="margin-top:16px;">
             <h2 style="margin:0 0 4px;font-size:1rem;">⚠️ Siswa Tidak/Belum Absen Hari Ini (per Kelas)</h2>
-            <p style="margin:0 0 12px;font-size:.8rem;color:var(--muted);">Menampilkan siswa yang belum melakukan absensi hari ini, dikelompokkan per kelas, agar guru langsung tahu di kelas mana saja ada siswa yang tidak absen. Gunakan filter Kelas di bawah untuk mempersempit tampilan.</p>
+            <p style="margin:0 0 12px;font-size:.8rem;color:var(--muted);">Menampilkan siswa yang belum melakukan absensi hari ini (sesuai jenis yang dipilih di kanan atas kartu Rekap: Pagi / Sholat / Pulang), dikelompokkan per kelas, agar guru langsung tahu di kelas mana saja ada siswa yang tidak absen. Gunakan filter Kelas di bawah untuk mempersempit tampilan.</p>
             <div id="rekapBelumAbsenGrid"></div>
           </div>
 
@@ -1316,9 +1321,40 @@ let dbReady = false;
 function loadSiswa(){ return siswaCache; }
 function loadAbsen(){ return absenCache; }
 
+/* ===== HELPER ABSENSI PER JENIS (Pagi / Sholat / Pulang) =====
+   Satu siswa boleh punya TIGA catatan per hari (satu per jenis). Karena itu, semua
+   hitungan "sudah / belum absen" HARUS dilakukan per jenis — jangan lagi menganggap
+   siswa "sudah absen" hanya karena punya SATU catatan apa pun hari itu.
+   Data lama tanpa kolom jenis (atau bernama 'Masuk') dianggap Pagi. */
+function jenisAbsen(a){ return (!a.jenis || a.jenis==='Masuk') ? 'Pagi' : a.jenis; }
+function siswaSudahAbsen(list, jenis){
+  return new Set(list.filter(a=>jenisAbsen(a)===jenis).map(a=>a.nama+'|'+a.kelas));
+}
+const FILTER_PAGI = 'jenis.eq.Pagi,jenis.is.null,jenis.eq.Masuk';
+function escHtml(v){
+  return String(v==null?'':v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+/* Supabase MEMBATASI 1000 baris per permintaan (walau .limit(3000) dsb). Dengan 888 siswa x 3 jenis
+   absen, data sehari bisa >2.600 baris. Fungsi ini mengambil SEMUA baris per halaman 1000.
+   buatQuery harus mengembalikan query BARU tiap dipanggil. */
+async function fetchSemuaBaris(buatQuery, maks){
+  const HAL = 1000; maks = maks || 30000;
+  let semua = [];
+  for(let dari=0; dari<maks; dari+=HAL){
+    let {data, error} = await buatQuery().order('id').range(dari, dari+HAL-1);
+    if(error){ // mis. tabel tanpa kolom id -> coba tanpa pengurutan tambahan
+      ({data, error} = await buatQuery().range(dari, dari+HAL-1));
+      if(error) return {data:null, error};
+    }
+    semua = semua.concat(data||[]);
+    if(!data || data.length<HAL) break;
+  }
+  return {data:semua, error:null};
+}
+
 async function refreshSiswaCache(){
   if(!sb) return;
-  const {data, error} = await sb.from('siswa').select('*').order('nama');
+  const {data, error} = await fetchSemuaBaris(()=>sb.from('siswa').select('*').order('nama'));
   if(error){ console.error(error); toast('Gagal konek database'); return; }
   siswaCache = data || [];
   dbReady = true;
@@ -1326,7 +1362,8 @@ async function refreshSiswaCache(){
 
 async function refreshAbsenCache(){
   if(!sb) return;
-  const {data, error} = await sb.from('absen').select('*').eq('tanggal', todayStrServer());
+  const tglCache = todayStrServer();
+  const {data, error} = await fetchSemuaBaris(()=>sb.from('absen').select('*').eq('tanggal', tglCache));
   if(error){ console.error(error); return; }
   absenCache = data || [];
 }
@@ -1362,18 +1399,18 @@ async function logAktivitas(aksi, detail){
 /* ================= LANDING PUBLIC STATS ================= */
 async function loadLandingStats(){
   if(!sb) return;
-  await Promise.all([refreshSiswaCache(), refreshAbsenCache(), refreshScannersCache()]);
+  /* Halaman depan bersifat PUBLIK: sengaja TIDAK memuat data absensi (informasi internal sekolah). */
+  await Promise.all([refreshSiswaCache(), refreshScannersCache()]);
   const totalSiswa = siswaCache.length;
   const totalKelas = new Set(siswaCache.map(s=>s.kelas)).size;
   const scannerAktif = scannersCache.filter(isScannerOnline).length;
-  const absenHariIni = absenCache.length;
   document.getElementById('lpTotalSiswa').textContent = totalSiswa;
   document.getElementById('lpTotalKelas').textContent = totalKelas;
   document.getElementById('lpScannerAktif').textContent = scannerAktif;
-  document.getElementById('lpAbsenHariIni').textContent = absenHariIni;
 }
 
 /* ================= REALTIME (dipakai saat sudah masuk admin/scan) ================= */
+let absenRealtimeTimer = null;
 let realtimeSudahAktif = false;
 function subscribeRealtime(){
   if(!sb || realtimeSudahAktif) return;
@@ -1385,11 +1422,15 @@ function subscribeRealtime(){
     }
   }).subscribe();
 
-  sb.channel('absen-changes').on('postgres_changes', {event:'*', schema:'public', table:'absen'}, async ()=>{
-    await refreshAbsenCache();
-    if(!document.getElementById('view-admin').classList.contains('hide')){
-      renderRekapHariIni(); renderDashboard();
-    }
+  /* Debounce: saat jam sibuk ratusan scan masuk beruntun; gabungkan jadi satu kali refresh. */
+  sb.channel('absen-changes').on('postgres_changes', {event:'*', schema:'public', table:'absen'}, ()=>{
+    clearTimeout(absenRealtimeTimer);
+    absenRealtimeTimer = setTimeout(async ()=>{
+      await refreshAbsenCache();
+      if(!document.getElementById('view-admin').classList.contains('hide')){
+        renderRekapHariIni(); renderDashboard();
+      }
+    }, 1500);
   }).subscribe();
 
   sb.channel('scanners-changes').on('postgres_changes', {event:'*', schema:'public', table:'scanners'}, async ()=>{
@@ -1644,9 +1685,11 @@ document.getElementById('btnCariRiwayat').addEventListener('click', async ()=>{
   if(!sb) return;
   const tgl = document.getElementById('riwayatTanggal').value || todayStr();
   const kelas = document.getElementById('selKelasRiwayat').value;
-  let q = sb.from('absen').select('*').eq('tanggal', tgl).order('jam');
-  if(kelas) q = q.eq('kelas', kelas);
-  const {data, error} = await q;
+  const {data, error} = await fetchSemuaBaris(()=>{
+    let q = sb.from('absen').select('*').eq('tanggal', tgl).order('jam');
+    if(kelas) q = q.eq('kelas', kelas);
+    return q;
+  });
   const tb = document.getElementById('tblRiwayat');
   if(error){ console.error(error); tb.innerHTML = '<tr><td colspan="5" class="empty">Gagal memuat data</td></tr>'; return; }
   if(!data || data.length===0){ tb.innerHTML = '<tr><td colspan="5" class="empty">Tidak ada data absensi untuk filter ini</td></tr>'; return; }
@@ -1657,46 +1700,48 @@ document.getElementById('btnCariRiwayat').addEventListener('click', async ()=>{
 /* ================= REKAP HARI INI ================= */
 function renderRekapHariIni(){
   const kelasFilter = document.getElementById('selKelasRekap') ? document.getElementById('selKelasRekap').value : '';
+  const jenisSel = (document.getElementById('selHariIniJenis') || {}).value || 'Pagi';
   const siswaAll = kelasFilter ? siswaCache.filter(s=>s.kelas===kelasFilter) : siswaCache;
   const absenHariIni = kelasFilter ? absenCache.filter(a=>a.kelas===kelasFilter) : absenCache;
-  const hadir = absenHariIni.filter(a=>a.status==='Hadir').length;
-  const telat = absenHariIni.filter(a=>a.status==='Terlambat').length;
-  const totalAbsen = siswaAll.filter(s=>absenHariIni.some(a=>a.nama===s.nama && a.kelas===s.kelas)).length;
-  const alpa = siswaAll.length - totalAbsen;
-  const pagi = absenHariIni.filter(a=>(a.jenis||'Pagi')==='Pagi' || a.jenis==='Masuk').length;
-  const sholat = absenHariIni.filter(a=>a.jenis==='Sholat').length;
-  const pulang = absenHariIni.filter(a=>a.jenis==='Pulang').length;
-  const dispensasi = absenHariIni.filter(a=>a.status==='Dispensasi').length;
+  /* Kartu atas + daftar "belum absen" dihitung PER JENIS yang dipilih (Pagi/Sholat/Pulang).
+     Siswa yang sudah absen Pagi TIDAK dianggap sudah absen Sholat/Pulang, dan sebaliknya. */
+  const absenJenis = absenHariIni.filter(a=>jenisAbsen(a)===jenisSel);
+  const sudahSet = siswaSudahAbsen(absenHariIni, jenisSel);
+  const hadir = absenJenis.filter(a=>a.status==='Hadir').length;
+  const telat = absenJenis.filter(a=>a.status==='Terlambat').length;
+  const alpa = siswaAll.filter(s=>!sudahSet.has(s.nama+'|'+s.kelas)).length;
+  const dispensasi = absenJenis.filter(a=>a.status==='Dispensasi').length;
+  const jml = (j)=> absenHariIni.filter(a=>jenisAbsen(a)===j).length;
   document.getElementById('statHadir').textContent = hadir;
   document.getElementById('statTelat').textContent = telat;
   document.getElementById('statAlpa').textContent = alpa;
-  document.getElementById('statPagi').textContent = pagi;
-  document.getElementById('statSholat').textContent = sholat;
-  document.getElementById('statPulang').textContent = pulang;
+  document.getElementById('statPagi').textContent = jml('Pagi');
+  document.getElementById('statSholat').textContent = jml('Sholat');
+  document.getElementById('statPulang').textContent = jml('Pulang');
   document.getElementById('statDispensasi').textContent = dispensasi;
-  renderBelumAbsenPerKelas(siswaAll, absenHariIni);
+  renderBelumAbsenPerKelas(siswaAll, sudahSet, jenisSel);
 }
 
-function renderBelumAbsenPerKelas(siswaAll, absenHariIni){
+function renderBelumAbsenPerKelas(siswaAll, sudahSet, jenisSel){
   const grid = document.getElementById('rekapBelumAbsenGrid');
   if(!grid) return;
-  const sudahSet = new Set(absenHariIni.map(a=>a.nama+'|'+a.kelas));
+  const label = 'absen ' + (jenisSel||'Pagi');
   const belum = siswaAll.filter(s=>!sudahSet.has(s.nama+'|'+s.kelas));
   if(belum.length===0){
-    grid.innerHTML = '<div class="empty">🎉 Semua siswa sudah absen hari ini</div>';
+    grid.innerHTML = `<div class="empty">🎉 Semua siswa sudah ${label} hari ini</div>`;
     return;
   }
   const kelasList = [...new Set(belum.map(s=>s.kelas))].sort();
-  grid.innerHTML = `<div style="margin-bottom:10px;font-size:.8rem;color:var(--muted);">Total <b>${belum.length}</b> siswa belum absen, tersebar di <b>${kelasList.length}</b> kelas.</div>` +
+  grid.innerHTML = `<div style="margin-bottom:10px;font-size:.8rem;color:var(--muted);">Total <b>${belum.length}</b> siswa belum ${label}, tersebar di <b>${kelasList.length}</b> kelas.</div>` +
     kelasList.map(k=>{
       const list = belum.filter(s=>s.kelas===k).sort((a,b)=>a.nama.localeCompare(b.nama));
       return `<div class="scanner-card" style="margin-bottom:10px;">
         <div class="name" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
-          <span>🏫 ${k}</span>
-          <span class="pill" style="background:var(--danger-bg);color:var(--danger);">${list.length} belum absen</span>
+          <span>🏫 ${escHtml(k)}</span>
+          <span class="pill" style="background:var(--danger-bg);color:var(--danger);">${list.length} belum ${label}</span>
         </div>
         <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;">
-          ${list.map(s=>`<span class="pill" style="background:#eef2f7;color:#556;">${s.nama}</span>`).join('')}
+          ${list.map(s=>`<span class="pill" style="background:#eef2f7;color:#556;">${escHtml(s.nama)}</span>`).join('')}
         </div>
       </div>`;
     }).join('');
@@ -1711,22 +1756,21 @@ function computeRekapRange(){
     return {dari: document.getElementById('inpRekapDari').value, sampai: document.getElementById('inpRekapSampai').value};
   }
   const acuan = document.getElementById('inpRekapTanggal').value || todayStr();
-  const d = new Date(acuan+'T00:00:00');
+  /* Hitung murni dengan string tanggal (BUKAN toISOString) supaya tidak bergeser 1 hari di WIB */
+  const [y, m, dd] = acuan.split('-').map(Number);
+  const p2 = (n)=>String(n).padStart(2,'0');
   let dari, sampai;
   if(periode==='harian'){ dari = sampai = acuan; }
   else if(periode==='mingguan'){
-    const day = d.getDay()||7;
-    const start = new Date(d); start.setDate(d.getDate()-day+1);
-    const end = new Date(start); end.setDate(start.getDate()+6);
-    dari = start.toISOString().slice(0,10); sampai = end.toISOString().slice(0,10);
+    const dow = new Date(Date.UTC(y, m-1, dd, 12)).getUTCDay() || 7; // Senin=1 ... Minggu=7
+    dari = tanggalGeser(acuan, -(dow-1)); sampai = tanggalGeser(dari, 6);
   }else if(periode==='bulanan'){
-    dari = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`;
-    sampai = new Date(d.getFullYear(), d.getMonth()+1, 0).toISOString().slice(0,10);
+    const akhir = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    dari = `${y}-${p2(m)}-01`; sampai = `${y}-${p2(m)}-${p2(akhir)}`;
   }else if(periode==='semester'){
-    const bulan = d.getMonth()+1;
-    if(bulan>=7){ dari = `${d.getFullYear()}-07-01`; sampai = `${d.getFullYear()}-12-31`; }
-    else{ dari = `${d.getFullYear()}-01-01`; sampai = `${d.getFullYear()}-06-30`; }
-  }else{ dari = `${d.getFullYear()}-01-01`; sampai = `${d.getFullYear()}-12-31`; }
+    if(m>=7){ dari = `${y}-07-01`; sampai = `${y}-12-31`; }
+    else{ dari = `${y}-01-01`; sampai = `${y}-06-30`; }
+  }else{ dari = `${y}-01-01`; sampai = `${y}-12-31`; }
   return {dari, sampai};
 }
 
@@ -1737,21 +1781,23 @@ async function tampilkanRekap(){
   const {dari, sampai} = computeRekapRange();
   if(!dari || !sampai){ toast('Isi rentang tanggal dulu'); return; }
   rekapRange = {dari, sampai};
-  let q = sb.from('absen').select('*').gte('tanggal', dari).lte('tanggal', sampai)
-    .order('tanggal', {ascending:false}).order('jam', {ascending:false});
   const kelas = document.getElementById('selKelasRekap').value;
   const nama = document.getElementById('inpRekapNama').value.trim();
   const status = document.getElementById('selRekapStatus').value;
   const jenis = document.getElementById('selRekapJenis').value;
   const cara = document.getElementById('selRekapCara').value;
   const scanner = document.getElementById('selRekapScanner').value;
-  if(kelas) q = q.eq('kelas', kelas);
-  if(nama) q = q.ilike('nama', `%${nama}%`);
-  if(status) q = q.eq('status', status);
-  if(jenis) q = q.eq('jenis', jenis);
-  if(cara) q = q.eq('cara', cara);
-  if(scanner) q = q.eq('scanner', scanner);
-  const {data, error} = await q.limit(3000);
+  const {data, error} = await fetchSemuaBaris(()=>{
+    let q = sb.from('absen').select('*').gte('tanggal', dari).lte('tanggal', sampai)
+      .order('tanggal', {ascending:false}).order('jam', {ascending:false});
+    if(kelas) q = q.eq('kelas', kelas);
+    if(nama) q = q.ilike('nama', `%${nama}%`);
+    if(status) q = q.eq('status', status);
+    if(jenis) q = q.eq('jenis', jenis);
+    if(cara) q = q.eq('cara', cara);
+    if(scanner) q = q.eq('scanner', scanner);
+    return q;
+  }, 20000);
   if(error){ console.error(error); toast('Gagal memuat rekap — pastikan migrasi SQL sudah dijalankan'); return; }
   rekapRows = data || [];
   const tb = document.getElementById('tblRekap');
@@ -1765,6 +1811,7 @@ document.getElementById('btnTampilkanRekap').addEventListener('click', tampilkan
 document.getElementById('btnRefreshRekap').addEventListener('click', tampilkanRekap);
 document.getElementById('selRekapPeriode').addEventListener('change', computeRekapRange);
 document.getElementById('selKelasRekap').addEventListener('change', renderRekapHariIni);
+document.getElementById('selHariIniJenis').addEventListener('change', renderRekapHariIni);
 
 /* Menghitung daftar siswa yang TIDAK ADA catatan absensi sama sekali pada tiap
    tanggal dalam rentang rekap saat ini (bukan hanya yang sudah ditandai Alpha),
@@ -1777,22 +1824,24 @@ async function computeTidakAbsenRows(dari, sampai){
   if(namaFilter) siswaScope = siswaScope.filter(s=>s.nama.toLowerCase().includes(namaFilter));
   if(siswaScope.length===0) return [];
 
-  let q = sb.from('absen').select('nama,kelas,tanggal').gte('tanggal', dari).lte('tanggal', sampai);
-  if(kelasFilter) q = q.eq('kelas', kelasFilter);
-  const {data, error} = await q.limit(20000);
+  const {data, error} = await fetchSemuaBaris(()=>{
+    let q = sb.from('absen').select('nama,kelas,tanggal').gte('tanggal', dari).lte('tanggal', sampai).or(FILTER_PAGI);
+    if(kelasFilter) q = q.eq('kelas', kelasFilter);
+    return q;
+  }, 30000);
   if(error){ console.error(error); return []; }
   const hadirSet = new Set((data||[]).map(a=>`${a.tanggal}|${a.nama}|${a.kelas}`));
 
   const dates = [];
-  let cur = new Date(dari+'T00:00:00');
-  const end = new Date(sampai+'T00:00:00');
-  while(cur <= end && dates.length < 366){ dates.push(cur.toISOString().slice(0,10)); cur.setDate(cur.getDate()+1); }
+  let cur = dari;
+  while(cur <= sampai && dates.length < 366){ dates.push(cur); cur = tanggalGeser(cur, 1); }
 
   const rows = [];
   outer: for(const tgl of dates){
+    if(!hariKeyFromDate(new Date(tgl+'T05:00:00Z'))) continue; // lewati Sabtu/Minggu
     for(const s of siswaScope){
       if(!hadirSet.has(`${tgl}|${s.nama}|${s.kelas}`)){
-        rows.push({Tanggal:tgl, Nama:s.nama, Kelas:s.kelas, Jam:'-', Jenis:'-', Status:'Tidak Absen', Cara:'-', Petugas:'-', Keterangan:'Tidak ada catatan absensi pada tanggal ini'});
+        rows.push({Tanggal:tgl, Nama:s.nama, Kelas:s.kelas, Jam:'-', Jenis:'Pagi', Status:'Tidak Absen', Cara:'-', Petugas:'-', Keterangan:'Tidak ada catatan absen Pagi pada tanggal ini'});
         if(rows.length>=5000) break outer;
       }
     }
@@ -2692,16 +2741,18 @@ function svgBarChart(labels, values){
 
 function loadDailyChart(){
   const labels = ['Hadir','Terlambat','Sakit','Izin','Alpha','Dispensasi'];
-  const counts = labels.map(st=> absenCache.filter(a=>a.status===st).length);
+  const absenPagi = absenCache.filter(a=>jenisAbsen(a)==='Pagi');
+  const counts = labels.map(st=> absenPagi.filter(a=>a.status===st).length);
   const totalSiswa = siswaCache.length || 1;
   const values = counts.map(c=>Math.round(c/totalSiswa*100));
   document.getElementById('chartDaily').innerHTML = svgBarChart(labels, values);
 }
 function loadKelasChart(){
+  const sudahPagi = siswaSudahAbsen(absenCache, 'Pagi');
   const kelasList = [...new Set(siswaCache.map(s=>s.kelas))];
   const data = kelasList.map(k=>{
     const total = siswaCache.filter(s=>s.kelas===k).length;
-    const hadir = absenCache.filter(a=>a.kelas===k).length;
+    const hadir = siswaCache.filter(s=>s.kelas===k && sudahPagi.has(s.nama+'|'+s.kelas)).length;
     return {kelas:k, pct: total ? Math.round(hadir/total*100) : 0};
   });
   document.getElementById('chartKelas').innerHTML = svgBarChart(data.map(d=>d.kelas), data.map(d=>d.pct));
@@ -2712,7 +2763,7 @@ async function loadWeeklyChart(){
   const hariIniWIB = todayStr();
   const days = [];
   for(let i=6;i>=0;i--){ days.push(tanggalGeser(hariIniWIB, -i)); }
-  const {data, error} = await sb.from('absen').select('tanggal,nama,kelas').gte('tanggal', days[0]);
+  const {data, error} = await fetchSemuaBaris(()=>sb.from('absen').select('tanggal,nama,kelas').gte('tanggal', days[0]).or(FILTER_PAGI), 20000);
   if(error){ console.error(error); return; }
   const values = days.map(d=>{
     const count = new Set((data||[]).filter(a=>a.tanggal===d).map(a=>a.nama+'|'+a.kelas)).size;
@@ -2729,7 +2780,8 @@ async function loadMonthlyChart(){
   const months = [];
   for(let i=5;i>=0;i--){ const d=new Date(Date.UTC(yIniWIB, mIniWIB-1-i, 1, 12,0,0)); months.push({y:d.getUTCFullYear(), m:d.getUTCMonth()}); }
   const startDate = new Date(Date.UTC(months[0].y, months[0].m, 1, 12,0,0)).toISOString().slice(0,10);
-  const {data, error} = await sb.from('absen').select('tanggal,nama,kelas').gte('tanggal', startDate);
+  /* urut tanggal terbaru dulu: kalau data melebihi batas 30.000 baris, yang terpotong bulan-bulan paling lama */
+  const {data, error} = await fetchSemuaBaris(()=>sb.from('absen').select('tanggal,nama,kelas').gte('tanggal', startDate).or(FILTER_PAGI).order('tanggal', {ascending:false}), 30000);
   if(error){ console.error(error); return; }
   const values = months.map(({y,m})=>{
     const inMonth = (data||[]).filter(a=>{ const dt=new Date(a.tanggal+'T00:00:00'); return dt.getFullYear()===y && dt.getMonth()===m; });
@@ -2748,17 +2800,20 @@ async function renderDashboard(){
   const totalSiswa = siswaCache.length;
   const totalKelas = new Set(siswaCache.map(s=>s.kelas)).size;
   const scannerAktif = scannersCache.filter(isScannerOnline).length;
-  const hadirHariIni = absenCache.length;
+  /* Angka utama dashboard = ABSEN PAGI (kehadiran harian). Sholat & Pulang punya kartu sendiri di menu Rekap. */
+  const absenPagi = absenCache.filter(a=>jenisAbsen(a)==='Pagi');
+  const sudahPagiSet = siswaSudahAbsen(absenCache, 'Pagi');
+  const hadirHariIni = siswaCache.filter(s=>sudahPagiSet.has(s.nama+'|'+s.kelas)).length;
   const belumHadir = Math.max(0, totalSiswa - hadirHariIni);
   const pctHadir = totalSiswa ? Math.round(hadirHariIni/totalSiswa*100) : 0;
   const pctBelum = totalSiswa ? Math.round(belumHadir/totalSiswa*100) : 0;
-  const countStatus = (st)=> absenCache.filter(a=>a.status===st).length;
+  const countStatus = (st)=> absenPagi.filter(a=>a.status===st).length;
   const terlambat = countStatus('Terlambat');
   const sakit = countStatus('Sakit');
   const izin = countStatus('Izin');
   const alpha = countStatus('Alpha');
   const dispensasi = countStatus('Dispensasi');
-  const hadirMurni = totalSiswa ? Math.round((absenCache.filter(a=>a.status==='Hadir'||a.status==='Terlambat').length)/totalSiswa*100) : 0;
+  const hadirMurni = totalSiswa ? Math.round((absenPagi.filter(a=>a.status==='Hadir'||a.status==='Terlambat').length)/totalSiswa*100) : 0;
 
   document.getElementById('dashTotalSiswa').textContent = totalSiswa;
   document.getElementById('dashScannerAktif').textContent = scannerAktif;
@@ -2782,8 +2837,7 @@ async function renderDashboard(){
     : '<tr><td colspan="5" class="empty">Belum ada absensi hari ini</td></tr>';
 
   // Siswa Belum Hadir (5)
-  const sudahSet = new Set(absenCache.map(a=>a.nama+'|'+a.kelas));
-  const belumList = siswaCache.filter(s=>!sudahSet.has(s.nama+'|'+s.kelas)).slice(0,5);
+  const belumList = siswaCache.filter(s=>!sudahPagiSet.has(s.nama+'|'+s.kelas)).slice(0,5);
   const elBelum = document.getElementById('dashBelumHadirList');
   elBelum.innerHTML = belumList.length ? belumList.map((s,i)=>`
     <div class="mini-list-row"><span class="rank">${i+1}.</span><span style="flex:1;">${s.nama}</span><span style="color:var(--muted);">${s.kelas}</span></div>`).join('')
@@ -2793,7 +2847,7 @@ async function renderDashboard(){
   const kelasList = [...new Set(siswaCache.map(s=>s.kelas))];
   const kelasPct = kelasList.map(k=>{
     const total = siswaCache.filter(s=>s.kelas===k).length;
-    const hadir = absenCache.filter(a=>a.kelas===k).length;
+    const hadir = siswaCache.filter(s=>s.kelas===k && sudahPagiSet.has(s.nama+'|'+s.kelas)).length;
     return {kelas:k, pct: total ? Math.round(hadir/total*100) : 0};
   }).sort((a,b)=>b.pct-a.pct).slice(0,5);
   const elTop = document.getElementById('dashTopKelas');
@@ -2813,10 +2867,15 @@ async function renderDashboard(){
   }).join('') : '<div class="empty">Belum ada scanner terdaftar</div>';
 
   loadDailyChart();
-  loadWeeklyChart();
-  loadMonthlyChart();
   loadKelasChart();
+  /* Grafik mingguan/bulanan mengambil banyak baris dari server: cukup segarkan tiap 60 detik */
+  if(Date.now() - chartBerkalaTerakhir > 60000){
+    chartBerkalaTerakhir = Date.now();
+    loadWeeklyChart();
+    loadMonthlyChart();
+  }
 }
+let chartBerkalaTerakhir = 0;
 
 /* ================= SCAN KIOSK ================= */
 let html5QrCode = null;
@@ -2824,6 +2883,7 @@ let scannerDeviceId = localStorage.getItem('scanner_device_id') || null;
 let scannerDeviceName = localStorage.getItem('scanner_device_name') || null;
 let scanClockTimer = null;
 let scanHeartbeatTimer = null;
+let scanPendingTimer = null;
 
 function updateScanClock(){
   document.getElementById('scanClock').textContent = new Date().toLocaleTimeString('id-ID');
@@ -2849,9 +2909,11 @@ async function initScanPage(){
   if(belumDisetujui || nonaktif){
     document.getElementById('scanPendingName').textContent = scannerDeviceName;
     document.getElementById('scanPending').classList.remove('hide');
-    if(!scanHeartbeatTimer) scanHeartbeatTimer = setInterval(async ()=>{ await refreshScannersCache(); initScanPage(); }, 15000);
+    if(!scanPendingTimer) scanPendingTimer = setInterval(async ()=>{ await refreshScannersCache(); initScanPage(); }, 15000);
     return;
   }
+  /* Sudah disetujui: hentikan pengecekan status 15 detik supaya layar scanner tidak ter-reset lagi */
+  if(scanPendingTimer){ clearInterval(scanPendingTimer); scanPendingTimer = null; }
   document.getElementById('scanDeviceName').textContent = scannerDeviceName;
   jenisAbsenDipilih = null;
   document.getElementById('scanJenisPilih').classList.remove('hide');
@@ -3041,7 +3103,7 @@ async function onScanSuccess(decodedText){
   }
   const sudah = absenCache.find(a=>a.nama===siswa.nama && a.kelas===siswa.kelas && a.tanggal===tgl && (a.jenis||'Pagi')===jenis);
   if(sudah){
-    showScanResult(false, `Absensi sudah tercatat`);
+    showScanResult(false, `${siswa.nama} sudah tercatat absen ${jenis} hari ini (jam ${sudah.jam}${sudah.scanner?', scanner '+sudah.scanner:''}${sudah.cara==='Manual'?', input manual':''})`);
     beep(false); ucapkanStatus(`${siswa.nama}, sudah absen`); return;
   }
 
@@ -3051,8 +3113,13 @@ async function onScanSuccess(decodedText){
   const {error} = await sb.from('absen').insert(entry);
   if(error){
     console.error(error);
-    absenCache.pop();
-    showScanResult(false, `Gagal simpan absen ${siswa.nama} — cek koneksi`);
+    absenCache = absenCache.filter(x=>x!==entry);
+    if(error.code==='23505'){
+      showScanResult(false, `${siswa.nama}: absen ${jenis} ditolak database (dianggap data ganda). Jika belum pernah absen ${jenis} hari ini, aturan UNIQUE di tabel absen perlu menyertakan kolom jenis.`);
+      refreshAbsenCache();
+    }else{
+      showScanResult(false, `Gagal simpan absen ${siswa.nama} — ${error.message || 'cek koneksi'}`);
+    }
     beep(false); return;
   }
   heartbeatScanner();
@@ -3078,7 +3145,7 @@ async function onScanSuccess(decodedText){
 function showScanResult(ok, msg){
   const card = document.getElementById('scanResultCard');
   card.className = 'scan-result-card';
-  card.innerHTML = `<div style="color:var(--danger);font-weight:700;font-size:.88rem;">⚠️ ${msg}</div>`;
+  card.innerHTML = `<div style="color:var(--danger);font-weight:700;font-size:.88rem;">⚠️ ${escHtml(msg)}</div>`;
 }
 
 function prependScanHistory(nama, kelas, jam, telat, label){
@@ -3122,12 +3189,12 @@ document.getElementById('btnSimpanManual').addEventListener('click', async ()=>{
   const jenisManual = jenisAbsenDipilih || 'Pagi';
   const tgl = todayStrServer();
   const sudah = absenCache.find(a=>a.nama===siswa.nama && a.kelas===siswa.kelas && a.tanggal===tgl && (a.jenis||'Pagi')===jenisManual);
-  if(sudah){ toast(`Absensi sudah tercatat`); return; }
+  if(sudah){ toast(`${siswa.nama} sudah tercatat absen ${jenisManual} (jam ${sudah.jam})`); return; }
   const jam = nowTimeServer();
   const entry = {nama:siswa.nama, kelas:siswa.kelas, tanggal:tgl, jam, status, scanner: scannerDeviceName, jenis:jenisManual, cara:'Manual', keterangan: keterangan||null};
   absenCache.push(entry);
   const {error} = await sb.from('absen').insert(entry);
-  if(error){ console.error(error); absenCache.pop(); toast('Gagal simpan — cek koneksi (pastikan migrasi SQL sudah dijalankan)'); return; }
+  if(error){ console.error(error); absenCache = absenCache.filter(x=>x!==entry); toast('Gagal simpan — ' + (error.message || 'cek koneksi') + (error.code==='23505' ? ' (aturan UNIQUE tabel absen belum menyertakan jenis)' : '')); return; }
   logAktivitas('absen_manual', `${siswa.nama} (${siswa.kelas}) dicatat ${status} manual (${jenisManual}) oleh ${scannerDeviceName}`);
   prependScanHistory(siswa.nama, siswa.kelas, jam, status==='Terlambat', 'Absen '+jenisManual);
   renderScanJumlahHariIni();
