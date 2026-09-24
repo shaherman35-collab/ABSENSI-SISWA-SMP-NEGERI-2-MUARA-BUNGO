@@ -1054,8 +1054,6 @@ try{
    Butuh "Replication" untuk tabel absen/siswa/scanners/log_aktivitas AKTIF di
    pengaturan Supabase — kalau belum aktif, panggilan ini tidak berbahaya, hanya
    tidak memberi manfaat realtime-nya (fallback tetap ada lewat refresh berkala). */
-if(sb) subscribeRealtime();
-
 function toast(msg){
   const t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('show');
@@ -1426,6 +1424,8 @@ function subscribeRealtime(){
     }
   }).subscribe();
 }
+
+if(sb) subscribeRealtime();
 
 /* ================= ADMIN SIDEBAR ROUTER ================= */
 const ADMIN_TITLES = {dashboard:'Dashboard', siswa:'Data Siswa', kelas:'Data Kelas', scanner:'Petugas Scanner',
