@@ -516,6 +516,9 @@ input[type=color]{width:44px;height:38px;padding:2px;border:1.5px solid var(--li
           <button class="btn btn-outline block hide" id="btnStopScan">⏸ Stop</button>
         </div>
         <div style="display:flex;gap:8px;margin-top:8px;">
+          <button class="btn btn-outline block hide" id="btnSwitchCamera">🔄 Ganti Kamera (Depan/Belakang)</button>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:8px;">
           <button class="btn btn-outline block" id="btnGantiJenis">↩ Ganti Jenis Absensi</button>
         </div>
         <div style="display:flex;gap:8px;margin-top:8px;">
@@ -524,6 +527,10 @@ input[type=color]{width:44px;height:38px;padding:2px;border:1.5px solid var(--li
         <div class="card" style="margin-top:12px;padding:12px;text-align:center;">
           <div class="num" id="scanJumlahHariIni" style="font-size:1.6rem;font-weight:800;color:var(--navy);">0</div>
           <div class="lbl" style="font-size:.75rem;color:var(--muted);">Jumlah Scan Hari Ini (perangkat ini)</div>
+        </div>
+        <div class="card" style="margin-top:8px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+          <label for="chkSuaraAbsen" style="font-size:.85rem;color:var(--navy);font-weight:600;">🔊 Suara Status Absen</label>
+          <input type="checkbox" id="chkSuaraAbsen" style="width:20px;height:20px;">
         </div>
       </div>
       <div>
@@ -1036,14 +1043,30 @@ try{
     sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   }
 }catch(e){ console.error(e); }
+/* PENTING: nyalakan sinkronisasi realtime di SEMUA perangkat (admin maupun setiap
+   HP/tablet petugas scanner), bukan cuma saat admin login. Ini krusial untuk sekolah
+   dengan banyak petugas scanner sekaligus (800+ siswa): begitu satu scanner berhasil
+   mencatat absen seorang siswa, absenCache di scanner LAIN ikut ter-update dalam
+   hitungan detik (lewat WebSocket Supabase), bukan menunggu polling 60 detik — jadi
+   risiko dua scanner sama-sama menganggap seorang siswa "belum absen" pada saat
+   bersamaan jauh lebih kecil. subscribeRealtime() didefinisikan di bawah dalam
+   <script> yang sama, jadi sudah ter-hoist dan aman dipanggil dari sini.
+   Butuh "Replication" untuk tabel absen/siswa/scanners/log_aktivitas AKTIF di
+   pengaturan Supabase — kalau belum aktif, panggilan ini tidak berbahaya, hanya
+   tidak memberi manfaat realtime-nya (fallback tetap ada lewat refresh berkala). */
+if(sb) subscribeRealtime();
 
 function toast(msg){
   const t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'), 1800);
 }
-function todayStr(){ return new Date().toISOString().slice(0,10); }
-function nowTime(){ return new Date().toTimeString().slice(0,5); }
+/* Sama seperti todayStrServer()/nowTimeServer() di bawah: HARUS pakai zona WIB
+   (Asia/Jakarta), bukan toISOString() (UTC) — dipakai untuk nilai default tanggal
+   di halaman admin (Rekap, Riwayat) supaya tidak "mundur satu hari" saat dibuka
+   dini hari WIB (00:00–06:59 WIB = masih hari sebelumnya kalau dihitung pakai UTC). */
+function todayStr(){ return bagianWaktuWIB(new Date()).tanggal; }
+function nowTime(){ return bagianWaktuWIB(new Date()).jam; }
 
 /* Waktu server: petugas bisa saja mengubah jam di perangkatnya sendiri, jadi validasi
    jadwal & pencatatan jam absen memakai jam server (Supabase), bukan jam perangkat.
@@ -1063,8 +1086,36 @@ async function syncServerTime(){
   }catch(e){ console.warn('Gagal sinkron waktu server, memakai waktu perangkat', e); }
 }
 function serverNowDate(){ return new Date(Date.now() + serverTimeOffsetMs); }
-function nowTimeServer(){ return serverNowDate().toTimeString().slice(0,5); }
-function todayStrServer(){ return serverNowDate().toISOString().slice(0,10); }
+
+/* PENTING: jangan pakai toISOString() untuk tanggal ataupun toTimeString()/getHours()
+   dkk untuk jam — keduanya bergantung pada zona waktu MESIN/BROWSER, dan toISOString()
+   khususnya SELALU UTC. Karena WIB = UTC+7, pergantian tanggal UTC jatuh pukul 07:00 WIB,
+   padahal jendela absen Pagi mulai 06:30 WIB — sehingga scan jam 06:30–06:59 WIB dulu
+   salah tercatat dengan tanggal KEMARIN (bentrok dengan data kemarin -> "sudah tercatat"
+   padahal itu absen baru). Untuk itu tanggal & jam SELALU dihitung eksplisit di zona
+   Asia/Jakarta (WIB), supaya tidak tergantung UTC atau setelan zona waktu perangkat. */
+const ZONA_WAKTU_SEKOLAH = 'Asia/Jakarta';
+function bagianWaktuWIB(date){
+  const fmt = new Intl.DateTimeFormat('en-CA', {
+    timeZone: ZONA_WAKTU_SEKOLAH,
+    year:'numeric', month:'2-digit', day:'2-digit',
+    hour:'2-digit', minute:'2-digit', hourCycle:'h23'
+  });
+  const parts = fmt.formatToParts(date).reduce((o,p)=>{ o[p.type]=p.value; return o; },{});
+  return { tanggal: `${parts.year}-${parts.month}-${parts.day}`, jam: `${parts.hour}:${parts.minute}` };
+}
+function nowTimeServer(){ return bagianWaktuWIB(serverNowDate()).jam; }
+function todayStrServer(){ return bagianWaktuWIB(serverNowDate()).tanggal; }
+
+/* Menggeser string tanggal 'YYYY-MM-DD' sebanyak offsetHari (boleh negatif), tanpa
+   terpengaruh zona waktu perangkat sama sekali (dibangun di UTC tengah hari supaya
+   aman dari pergantian tanggal akibat offset zona waktu). Dipakai untuk membangun
+   rentang tanggal grafik mingguan/bulanan berbasis tanggal WIB yang sudah benar. */
+function tanggalGeser(tglYMD, offsetHari){
+  const [y,m,dd] = tglYMD.split('-').map(Number);
+  const d = new Date(Date.UTC(y, m-1, dd + offsetHari, 12, 0, 0));
+  return d.toISOString().slice(0,10);
+}
 
 /* ================= JADWAL JAM MASUK/PULANG PER HARI =================
    Senin–Kamis: Masuk 06:30–07:15, Pulang 14:30–18:00
@@ -1119,12 +1170,14 @@ function cekJendelaAbsen(jenis, jam, j){
 }
 
 function hariKeyFromDate(d){
-  const idx = d.getDay(); // 0=Minggu ... 6=Sabtu
-  const map = {1:'senin', 2:'selasa', 3:'rabu', 4:'kamis', 5:'jumat'};
-  return map[idx] || null; // null untuk Sabtu/Minggu (bukan hari sekolah)
+  /* Pakai nama hari di zona WIB (bukan d.getDay() yang ikut zona waktu perangkat),
+     supaya konsisten dengan tanggal & jam WIB yang dipakai di bagianWaktuWIB(). */
+  const namaHari = new Intl.DateTimeFormat('en-US', {timeZone: ZONA_WAKTU_SEKOLAH, weekday:'short'}).format(d);
+  const map = {Mon:'senin', Tue:'selasa', Wed:'rabu', Thu:'kamis', Fri:'jumat'};
+  return map[namaHari] || null; // null untuk Sabtu/Minggu (bukan hari sekolah)
 }
 function jadwalHariIni(){
-  const key = hariKeyFromDate(new Date());
+  const key = hariKeyFromDate(serverNowDate());
   return key ? JADWAL_HARI[key] : null;
 }
 
@@ -1323,8 +1376,10 @@ async function loadLandingStats(){
 }
 
 /* ================= REALTIME (dipakai saat sudah masuk admin/scan) ================= */
+let realtimeSudahAktif = false;
 function subscribeRealtime(){
-  if(!sb) return;
+  if(!sb || realtimeSudahAktif) return;
+  realtimeSudahAktif = true;
   sb.channel('siswa-changes').on('postgres_changes', {event:'*', schema:'public', table:'siswa'}, async ()=>{
     await refreshSiswaCache();
     if(!document.getElementById('view-admin').classList.contains('hide')){
@@ -1386,6 +1441,7 @@ function showAdminPage(name){
   if(name==='scanner') renderScannerPage();
   if(name==='riwayat'){ refreshKelasSelect(); document.getElementById('riwayatTanggal').value = todayStr(); }
   if(name==='rekap'){
+    refreshKelasSelect();
     renderRekapHariIni();
     document.getElementById('inpRekapTanggal').value = todayStr();
     const selScanner = document.getElementById('selRekapScanner');
@@ -2653,8 +2709,9 @@ function loadKelasChart(){
 async function loadWeeklyChart(){
   if(!sb) return;
   const totalSiswa = siswaCache.length || 1;
+  const hariIniWIB = todayStr();
   const days = [];
-  for(let i=6;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); days.push(d.toISOString().slice(0,10)); }
+  for(let i=6;i>=0;i--){ days.push(tanggalGeser(hariIniWIB, -i)); }
   const {data, error} = await sb.from('absen').select('tanggal,nama,kelas').gte('tanggal', days[0]);
   if(error){ console.error(error); return; }
   const values = days.map(d=>{
@@ -2668,9 +2725,10 @@ async function loadWeeklyChart(){
 async function loadMonthlyChart(){
   if(!sb) return;
   const totalSiswa = siswaCache.length || 1;
+  const [yIniWIB, mIniWIB] = todayStr().split('-').map(Number); // mIniWIB: 1-indexed
   const months = [];
-  for(let i=5;i>=0;i--){ const d=new Date(); d.setMonth(d.getMonth()-i,1); months.push({y:d.getFullYear(), m:d.getMonth()}); }
-  const startDate = new Date(months[0].y, months[0].m, 1).toISOString().slice(0,10);
+  for(let i=5;i>=0;i--){ const d=new Date(Date.UTC(yIniWIB, mIniWIB-1-i, 1, 12,0,0)); months.push({y:d.getUTCFullYear(), m:d.getUTCMonth()}); }
+  const startDate = new Date(Date.UTC(months[0].y, months[0].m, 1, 12,0,0)).toISOString().slice(0,10);
   const {data, error} = await sb.from('absen').select('tanggal,nama,kelas').gte('tanggal', startDate);
   if(error){ console.error(error); return; }
   const values = months.map(({y,m})=>{
@@ -2799,7 +2857,16 @@ async function initScanPage(){
   document.getElementById('scanJenisPilih').classList.remove('hide');
   await syncServerTime();
   await heartbeatScanner();
-  if(!scanHeartbeatTimer) scanHeartbeatTimer = setInterval(()=>{ heartbeatScanner(); syncServerTime(); }, 60000);
+  /* Penting: refresh absenCache & jam absen secara berkala juga di sini (bukan cuma
+     saat halaman scan pertama kali dibuka), supaya kalau perangkat dibiarkan menyala
+     terus lewat tengah malam WIB, cache "absen hari ini" otomatis ikut pindah ke hari
+     baru tanpa perlu admin/petugas membuka ulang halaman secara manual. */
+  if(!scanHeartbeatTimer) scanHeartbeatTimer = setInterval(async ()=>{
+    heartbeatScanner();
+    await syncServerTime();
+    await loadJamMasuk();
+    await refreshAbsenCache();
+  }, 60000);
 }
 
 /* ================= PILIH JENIS ABSENSI ================= */
@@ -2845,14 +2912,44 @@ async function heartbeatScanner(){
   await sb.from('scanners').update({last_seen: new Date().toISOString()}).eq('id', scannerDeviceId);
 }
 
+/* ===== Kamera depan/belakang ===== */
+let facingModeAktif = localStorage.getItem('scanner_facing_mode') || 'environment';
+let scannerSedangJalan = false;
+
+async function mulaiKamera(facingMode){
+  if(!html5QrCode) html5QrCode = new Html5Qrcode('reader');
+  try{
+    await html5QrCode.start({facingMode}, {fps:10, qrbox:220}, onScanSuccess, ()=>{});
+    scannerSedangJalan = true;
+    facingModeAktif = facingMode;
+    localStorage.setItem('scanner_facing_mode', facingMode);
+    document.getElementById('btnStartScan').classList.add('hide');
+    document.getElementById('btnStopScan').classList.remove('hide');
+    /* Tampilkan tombol ganti kamera hanya jika perangkat memang punya lebih dari 1 kamera */
+    Html5Qrcode.getCameras().then(list=>{
+      document.getElementById('btnSwitchCamera').classList.toggle('hide', !(list && list.length > 1));
+    }).catch(()=>{
+      /* Jika enumerasi kamera gagal/di-blok browser, tetap tampilkan tombol supaya
+         pengguna tetap bisa mencoba toggle depan/belakang secara manual. */
+      document.getElementById('btnSwitchCamera').classList.remove('hide');
+    });
+  }catch(err){
+    console.error(err);
+    toast('Gagal mengakses kamera' + (facingMode==='user' ? ' depan' : ' belakang'));
+  }
+}
+
 document.getElementById('btnStartScan').addEventListener('click', ()=>{
-  html5QrCode = new Html5Qrcode('reader');
-  html5QrCode.start({facingMode:'environment'}, {fps:10, qrbox:220}, onScanSuccess, ()=>{})
-    .then(()=>{
-      document.getElementById('btnStartScan').classList.add('hide');
-      document.getElementById('btnStopScan').classList.remove('hide');
-    })
-    .catch(err=>{ console.error(err); toast('Gagal mengakses kamera'); });
+  mulaiKamera(facingModeAktif);
+});
+document.getElementById('btnSwitchCamera').addEventListener('click', async ()=>{
+  if(!scannerSedangJalan) return;
+  const facingBaru = facingModeAktif === 'environment' ? 'user' : 'environment';
+  try{
+    await html5QrCode.stop();
+  }catch(e){ /* abaikan jika memang belum jalan */ }
+  await mulaiKamera(facingBaru);
+  toast(facingBaru==='user' ? 'Kamera depan aktif' : 'Kamera belakang aktif');
 });
 document.getElementById('btnStopScan').addEventListener('click', stopScanIfRunning);
 function stopScanIfRunning(){
@@ -2860,8 +2957,28 @@ function stopScanIfRunning(){
     html5QrCode.stop().catch(()=>{});
     html5QrCode = null;
   }
+  scannerSedangJalan = false;
   document.getElementById('btnStartScan').classList.remove('hide');
   document.getElementById('btnStopScan').classList.add('hide');
+  document.getElementById('btnSwitchCamera').classList.add('hide');
+}
+
+/* ===== Suara status absen (Hadir / Terlambat / dsb) ===== */
+const chkSuaraAbsenEl = document.getElementById('chkSuaraAbsen');
+chkSuaraAbsenEl.checked = localStorage.getItem('scanner_suara_aktif') !== '0';
+chkSuaraAbsenEl.addEventListener('change', ()=>{
+  localStorage.setItem('scanner_suara_aktif', chkSuaraAbsenEl.checked ? '1' : '0');
+});
+function ucapkanStatus(teks){
+  if(localStorage.getItem('scanner_suara_aktif') === '0') return;
+  if(!('speechSynthesis' in window)) return;
+  try{
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(teks);
+    u.lang = 'id-ID';
+    u.rate = 1;
+    window.speechSynthesis.speak(u);
+  }catch(e){ /* diamkan jika TTS tidak tersedia */ }
 }
 
 function beep(ok){
@@ -2925,7 +3042,7 @@ async function onScanSuccess(decodedText){
   const sudah = absenCache.find(a=>a.nama===siswa.nama && a.kelas===siswa.kelas && a.tanggal===tgl && (a.jenis||'Pagi')===jenis);
   if(sudah){
     showScanResult(false, `Absensi sudah tercatat`);
-    beep(false); return;
+    beep(false); ucapkanStatus(`${siswa.nama}, sudah absen`); return;
   }
 
   const telat = jenis==='Pagi' && jam > jadwalHari.batas;
@@ -2950,11 +3067,12 @@ async function onScanSuccess(decodedText){
     <div class="scan-result-meta">
       Kelas &nbsp; ${siswa.kelas}<br>
       Waktu &nbsp; ${jam}<br>
-      Tanggal &nbsp; ${new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'})}<br>
+      Tanggal &nbsp; ${new Date(tgl+'T12:00:00').toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'})}<br>
       Scanner &nbsp; ${scannerDeviceName}
     </div>`;
   prependScanHistory(siswa.nama, siswa.kelas, jam, telat, 'Absen '+jenis);
   beep(true);
+  ucapkanStatus(jenis==='Pagi' ? `${siswa.nama}, ${telat?'Terlambat':'Hadir'}` : `${siswa.nama}, Absen ${jenis} berhasil`);
 }
 
 function showScanResult(ok, msg){
@@ -3014,6 +3132,7 @@ document.getElementById('btnSimpanManual').addEventListener('click', async ()=>{
   prependScanHistory(siswa.nama, siswa.kelas, jam, status==='Terlambat', 'Absen '+jenisManual);
   renderScanJumlahHariIni();
   toast(`Absensi manual ${siswa.nama} tersimpan (${status})`);
+  ucapkanStatus(`${siswa.nama}, ${status}`);
   document.getElementById('scanManualPanel').classList.add('hide');
   document.getElementById('scanMain').classList.remove('hide');
 });
