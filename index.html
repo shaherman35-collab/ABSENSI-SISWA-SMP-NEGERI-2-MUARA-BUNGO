@@ -398,6 +398,7 @@ input[type=color]{width:44px;height:38px;padding:2px;border:1.5px solid var(--li
     </div>
     <div class="lp-nav-actions">
       <button class="btn btn-outline" style="color:#fff;border-color:rgba(255,255,255,.5);" id="btnGoLogin">Login Admin</button>
+      <button class="btn btn-outline" style="color:#fff;border-color:rgba(255,255,255,.5);" id="btnGoLoginWalas">Login Wali Kelas</button>
       <button class="btn btn-gold" id="btnGoScanNav">Scanner</button>
     </div>
   </nav>
@@ -411,6 +412,7 @@ input[type=color]{width:44px;height:38px;padding:2px;border:1.5px solid var(--li
       <div class="lp-hero-actions">
         <button class="btn btn-navy" id="btnGoScanHero">▶ Mulai Scan</button>
         <button class="btn btn-outline" id="btnGoLoginHero">🔒 Login Admin</button>
+        <button class="btn btn-outline" id="btnGoLoginWalasHero">🔒 Login Wali Kelas</button>
       </div>
     </div>
     <div class="lp-card-mock">
@@ -461,6 +463,41 @@ input[type=color]{width:44px;height:38px;padding:2px;border:1.5px solid var(--li
       <div class="field-gap"></div>
       <button class="btn btn-navy block" id="btnDoLogin">Masuk</button>
       <a class="login-back" id="btnBackFromLogin">← Kembali ke beranda</a>
+    </div>
+  </div>
+</div>
+
+<!-- ============ LOGIN WALI KELAS ============ -->
+<div id="view-login-walas" class="hide">
+  <div class="login-wrap">
+    <div class="login-card">
+      <h2>Login Wali Kelas</h2>
+      <p class="sub">SMP Negeri 2 Muara Bungo</p>
+      <div class="login-err" id="loginWalasErr"></div>
+      <label class="field">Kelas</label>
+      <select id="loginWalasKelas">
+        <optgroup label="Kelas 7">
+          <option value="7A">7A</option><option value="7B">7B</option><option value="7C">7C</option>
+          <option value="7D">7D</option><option value="7E">7E</option><option value="7F">7F</option>
+          <option value="7G">7G</option><option value="7H">7H</option><option value="7I">7I</option>
+        </optgroup>
+        <optgroup label="Kelas 8">
+          <option value="8A">8A</option><option value="8B">8B</option><option value="8C">8C</option>
+          <option value="8D">8D</option><option value="8E">8E</option><option value="8F">8F</option>
+          <option value="8G">8G</option><option value="8H">8H</option><option value="8I">8I</option>
+        </optgroup>
+        <optgroup label="Kelas 9">
+          <option value="9A">9A</option><option value="9B">9B</option><option value="9C">9C</option>
+          <option value="9D">9D</option><option value="9E">9E</option><option value="9F">9F</option>
+          <option value="9G">9G</option><option value="9H">9H</option><option value="9I">9I</option>
+        </optgroup>
+      </select>
+      <div class="field-gap"></div>
+      <label class="field">Password</label>
+      <input type="password" id="loginWalasPassword" placeholder="••••••••" autocomplete="current-password">
+      <div class="field-gap"></div>
+      <button class="btn btn-navy block" id="btnDoLoginWalas">Masuk</button>
+      <a class="login-back" id="btnBackFromLoginWalas">← Kembali ke beranda</a>
     </div>
   </div>
 </div>
@@ -1220,7 +1257,7 @@ function tentukanJenisAbsen(jam){
 
 /* ================= ROUTER (top-level views) ================= */
 function showView(name){
-  ['landing','login','scan','admin'].forEach(v=>{
+  ['landing','login','login-walas','scan','admin'].forEach(v=>{
     document.getElementById('view-'+v).classList.toggle('hide', v!==name);
   });
   window.scrollTo(0,0);
@@ -1231,6 +1268,10 @@ document.getElementById('btnGoLoginHero').addEventListener('click', ()=>showView
 document.getElementById('btnGoScanNav').addEventListener('click', ()=>{ showView('scan'); initScanPage(); });
 document.getElementById('btnGoScanHero').addEventListener('click', ()=>{ showView('scan'); initScanPage(); });
 document.getElementById('btnBackFromLogin').addEventListener('click', (e)=>{ e.preventDefault(); showView('landing'); });
+document.getElementById('btnGoLoginWalas').addEventListener('click', ()=>showView('login-walas'));
+const btnGoLoginWalasHero = document.getElementById('btnGoLoginWalasHero');
+if(btnGoLoginWalasHero) btnGoLoginWalasHero.addEventListener('click', ()=>showView('login-walas'));
+document.getElementById('btnBackFromLoginWalas').addEventListener('click', (e)=>{ e.preventDefault(); showView('landing'); });
 document.getElementById('btnExitScan').addEventListener('click', ()=>{ logAktivitas('logout', `${scannerDeviceName||'Perangkat'} keluar dari mode scan`); stopScanIfRunning();
   if(scanHeartbeatTimer){ clearInterval(scanHeartbeatTimer); scanHeartbeatTimer = null; }
   if(scanPendingTimer){ clearInterval(scanPendingTimer); scanPendingTimer = null; }
@@ -1252,10 +1293,57 @@ document.getElementById('btnDoLogin').addEventListener('click', async ()=>{
 });
 
 document.getElementById('btnLogout').addEventListener('click', async ()=>{
+  if(isWalasMode){
+    logAktivitas('logout', `Wali Kelas ${walasKelas} logout dari panel rekap`);
+    isWalasMode = false; walasKelas = '';
+    showView('landing');
+    return;
+  }
   logAktivitas('logout', `${currentAdminEmail || 'Admin'} logout dari panel admin`);
   if(sb) await sb.auth.signOut();
   showView('landing');
 });
+
+/* ================= WALI KELAS (akses rekap khusus per kelas) ================= */
+const WALAS_PASSWORD = 'admin123';
+let isWalasMode = false;
+let walasKelas = '';
+document.getElementById('btnDoLoginWalas').addEventListener('click', async ()=>{
+  const kelas = document.getElementById('loginWalasKelas').value;
+  const password = document.getElementById('loginWalasPassword').value;
+  const errBox = document.getElementById('loginWalasErr');
+  errBox.classList.remove('show');
+  if(!kelas || !password){ errBox.textContent = 'Pilih kelas & isi password dulu'; errBox.classList.add('show'); return; }
+  if(password !== WALAS_PASSWORD){ errBox.textContent = 'Password salah'; errBox.classList.add('show'); return; }
+  await enterWalas(kelas);
+  logAktivitas('login', `Wali Kelas ${kelas} login ke panel rekap`);
+});
+function applyWalasRestrictions(){
+  document.querySelectorAll('.admin-nav button').forEach(b=>{
+    b.classList.toggle('hide', b.dataset.p !== 'rekap');
+  });
+  const badge = document.getElementById('adminRoleBadge');
+  if(badge) badge.textContent = `Wali Kelas ${walasKelas}`;
+  const profile = document.querySelector('.admin-profile');
+  if(profile) profile.innerHTML = `<div class="avatar">W</div>Wali Kelas ${walasKelas}`;
+}
+async function enterWalas(kelas){
+  isWalasMode = true;
+  walasKelas = kelas;
+  currentAdminRole = 'Wali Kelas';
+  currentAdminEmail = '';
+  showView('admin');
+  applyWalasRestrictions();
+  await Promise.all([refreshSiswaCache(), refreshScannersCache()]);
+  showAdminPage('rekap');
+  const selKelas = document.getElementById('selKelasRekap');
+  if(selKelas){ selKelas.innerHTML = `<option value="${kelas}">${kelas}</option>`; selKelas.value = kelas; selKelas.disabled = true; }
+  const selKelasRiwayat = document.getElementById('selKelasRiwayat');
+  if(selKelasRiwayat){ selKelasRiwayat.innerHTML = `<option value="${kelas}">${kelas}</option>`; selKelasRiwayat.value = kelas; selKelasRiwayat.disabled = true; }
+  renderRekapHariIni();
+  computeRekapRange();
+  await tampilkanRekap();
+}
 
 /* ================= DARK / LIGHT MODE ================= */
 function applyTheme(mode){
@@ -1303,8 +1391,15 @@ function applyRoleRestrictions(){
   });
   document.getElementById('adminRoleBadge') && (document.getElementById('adminRoleBadge').textContent = currentAdminRole);
   document.body.classList.toggle('role-readonly', readonly);
+  const profile = document.querySelector('.admin-profile');
+  if(profile) profile.innerHTML = `<div class="avatar">A</div>Administrator`;
+  const selKelas = document.getElementById('selKelasRekap');
+  if(selKelas) selKelas.disabled = false;
+  const selKelasRiwayat = document.getElementById('selKelasRiwayat');
+  if(selKelasRiwayat) selKelasRiwayat.disabled = false;
 }
 async function enterAdmin(){
+  isWalasMode = false; walasKelas = '';
   showView('admin');
   await loadCurrentAdminRole();
   applyRoleRestrictions();
@@ -1820,57 +1915,96 @@ document.getElementById('selRekapPeriode').addEventListener('change', computeRek
 document.getElementById('selKelasRekap').addEventListener('change', renderRekapHariIni);
 document.getElementById('selHariIniJenis').addEventListener('change', renderRekapHariIni);
 
-/* Menghitung daftar siswa yang TIDAK ADA catatan absensi sama sekali pada tiap
-   tanggal dalam rentang rekap saat ini (bukan hanya yang sudah ditandai Alpha),
-   supaya guru tahu persis siswa mana & di kelas mana yang tidak absen. */
-async function computeTidakAbsenRows(dari, sampai){
-  if(!sb || !dari || !sampai) return [];
-  const kelasFilter = document.getElementById('selKelasRekap').value;
-  const namaFilter = document.getElementById('inpRekapNama').value.trim().toLowerCase();
-  let siswaScope = kelasFilter ? siswaCache.filter(s=>s.kelas===kelasFilter) : siswaCache;
-  if(namaFilter) siswaScope = siswaScope.filter(s=>s.nama.toLowerCase().includes(namaFilter));
-  if(siswaScope.length===0) return [];
-
-  const {data, error} = await fetchSemuaBaris(()=>{
-    let q = sb.from('absen').select('nama,kelas,tanggal').gte('tanggal', dari).lte('tanggal', sampai).or(FILTER_PAGI);
-    if(kelasFilter) q = q.eq('kelas', kelasFilter);
-    return q;
-  }, 30000);
-  if(error){ console.error(error); return []; }
-  const hadirSet = new Set((data||[]).map(a=>`${a.tanggal}|${a.nama}|${a.kelas}`));
-
+/* ================= EXPORT EXCEL REKAP: 3 SHEET (ABSEN PAGI / ABSEN SHOLAT / ABSEN PULANG) =================
+   Format per sheet: No | Nama | Kelas | tanggal 01,02,03... | kolom ringkasan.
+   - Data siswa diambil dari siswaCache (tabel `siswa`) supaya siswa yang tidak pernah scan tetap muncul,
+     bukan hanya siswa yang punya baris di tabel `absen`.
+   - Kolom tanggal dibatasi ke hari sekolah (Senin-Jumat) dalam rentang periode yang dipilih di kartu Rekap,
+     konsisten dengan hariKeyFromDate() yang sudah dipakai di tempat lain (mis. computeRekapRange).
+   - Kode Pagi: H=Hadir, T=Terlambat, A=Tidak Absen (status lain seperti Sakit/Izin/Dispensasi/Alpha,
+     atau tidak ada catatan sama sekali, ikut dihitung A supaya tetap konsisten dengan 3 kode yang diminta).
+   - Kode Sholat & Pulang: H = ada catatan absen pada jenis tsb, A = tidak ada catatan. */
+function kodeAbsenPagi(status){
+  if(status==='Hadir') return 'H';
+  if(status==='Terlambat') return 'T';
+  return 'A';
+}
+function daftarTanggalHariSekolah(dari, sampai){
   const dates = [];
   let cur = dari;
-  while(cur <= sampai && dates.length < 366){ dates.push(cur); cur = tanggalGeser(cur, 1); }
-
-  const rows = [];
-  outer: for(const tgl of dates){
-    if(!hariKeyFromDate(new Date(tgl+'T05:00:00Z'))) continue; // lewati Sabtu/Minggu
-    for(const s of siswaScope){
-      if(!hadirSet.has(`${tgl}|${s.nama}|${s.kelas}`)){
-        rows.push({Tanggal:tgl, Nama:s.nama, Kelas:s.kelas, Jam:'-', Jenis:'Pagi', Status:'Tidak Absen', Cara:'-', Petugas:'-', Keterangan:'Tidak ada catatan absen Pagi pada tanggal ini'});
-        if(rows.length>=5000) break outer;
-      }
-    }
+  while(cur <= sampai && dates.length < 366){
+    if(hariKeyFromDate(new Date(cur+'T05:00:00Z'))) dates.push(cur); // lewati Sabtu/Minggu
+    cur = tanggalGeser(cur, 1);
   }
-  return rows;
+  return dates;
 }
 
 document.getElementById('btnExportRekap').addEventListener('click', async ()=>{
-  if(rekapRows.length===0){ toast('Tampilkan rekap dulu sebelum export'); return; }
-  const data = rekapRows.map(a=>({Tanggal:a.tanggal, Nama:a.nama, Kelas:a.kelas, Jam:a.jam, Jenis:a.jenis||'-', Status:a.status, Cara:a.cara||'-', Petugas:a.scanner||'-', Keterangan:a.keterangan||''}));
-  toast('Menyiapkan data siswa tidak absen...');
-  const tidakAbsen = await computeTidakAbsenRows(rekapRange.dari, rekapRange.sampai);
-  const gabungan = data.concat(tidakAbsen).sort((a,b)=>{
-    if(a.Tanggal!==b.Tanggal) return b.Tanggal.localeCompare(a.Tanggal);
-    if(a.Kelas!==b.Kelas) return a.Kelas.localeCompare(b.Kelas);
-    return a.Nama.localeCompare(b.Nama);
-  });
-  const ws = XLSX.utils.json_to_sheet(gabungan);
+  if(!sb){ toast('Supabase belum dikonfigurasi'); return; }
+  const {dari, sampai} = computeRekapRange();
+  if(!dari || !sampai){ toast('Isi rentang tanggal dulu'); return; }
+  const kelasFilter = document.getElementById('selKelasRekap').value;
+  const namaFilter = document.getElementById('inpRekapNama').value.trim().toLowerCase();
+
+  let siswaScope = kelasFilter ? siswaCache.filter(s=>s.kelas===kelasFilter) : siswaCache.slice();
+  if(namaFilter) siswaScope = siswaScope.filter(s=>s.nama.toLowerCase().includes(namaFilter));
+  if(siswaScope.length===0){ toast('Tidak ada data siswa untuk filter ini'); return; }
+  siswaScope = siswaScope.slice().sort((a,b)=> a.kelas===b.kelas ? a.nama.localeCompare(b.nama) : a.kelas.localeCompare(b.kelas));
+
+  const tanggalList = daftarTanggalHariSekolah(dari, sampai);
+  if(tanggalList.length===0){ toast('Tidak ada hari sekolah pada periode ini'); return; }
+  const kolomTanggal = tanggalList.map(t=>t.slice(8,10)); // "01","02",...
+
+  toast('Menyiapkan file Excel...');
+  const {data, error} = await fetchSemuaBaris(()=>{
+    let q = sb.from('absen').select('nama,kelas,tanggal,jam,jenis,status').gte('tanggal', dari).lte('tanggal', sampai);
+    if(kelasFilter) q = q.eq('kelas', kelasFilter);
+    return q;
+  }, 50000);
+  if(error){ console.error(error); toast('Gagal memuat data absensi — pastikan migrasi SQL sudah dijalankan'); return; }
+
+  // peta: "tanggal|nama|kelas|jenisPakai" -> status absen tercatat (baris terakhir yang menang kalau dobel)
+  const peta = new Map();
+  (data||[]).forEach(a=>{ peta.set(`${a.tanggal}|${a.nama}|${a.kelas}|${jenisAbsen(a)}`, a.status); });
+
+  function buatBarisSheet(jenis, kodeFn, ringkasanDef){
+    const header = ['No','Nama','Kelas', ...kolomTanggal, ...ringkasanDef.map(d=>d.label)];
+    const rows = [header];
+    siswaScope.forEach((s, idx)=>{
+      const kodeHarian = tanggalList.map(tgl=>kodeFn(peta.get(`${tgl}|${s.nama}|${s.kelas}|${jenis}`)));
+      const ringkasan = ringkasanDef.map(d=>kodeHarian.filter(k=>k===d.kode).length);
+      rows.push([idx+1, s.nama, s.kelas, ...kodeHarian, ...ringkasan]);
+    });
+    return rows;
+  }
+
+  function buatWorksheet(rows){
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    const jumlahRingkasan = rows[0].length - 3 - kolomTanggal.length;
+    const cols = [{wch:4},{wch:26},{wch:10}];
+    kolomTanggal.forEach(()=>cols.push({wch:4}));
+    for(let i=0;i<jumlahRingkasan;i++) cols.push({wch:12});
+    ws['!cols'] = cols;
+    // Catatan: pustaka XLSX (SheetJS Community Edition) yang ditanam di aplikasi ini tidak menulis
+    // freeze panes/bold saat export, jadi baris ini disiapkan untuk kompatibilitas ke depan namun
+    // mungkin tidak langsung aktif di Excel — kalau perlu, tinggal View > Freeze Panes di baris ke-2.
+    ws['!freeze'] = {xSplit:3, ySplit:1, topLeftCell:'D2', activePane:'bottomRight', state:'frozen'};
+    return ws;
+  }
+
+  const rowsPagi = buatBarisSheet('Pagi', kodeAbsenPagi,
+    [{label:'Hadir',kode:'H'},{label:'Terlambat',kode:'T'},{label:'Tidak Absen',kode:'A'}]);
+  const rowsSholat = buatBarisSheet('Sholat', (status)=> status ? 'H' : 'A',
+    [{label:'Hadir',kode:'H'},{label:'Tidak Absen',kode:'A'}]);
+  const rowsPulang = buatBarisSheet('Pulang', (status)=> status ? 'H' : 'A',
+    [{label:'Sudah Pulang',kode:'H'},{label:'Belum Absen',kode:'A'}]);
+
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Rekap');
-  XLSX.writeFile(wb, `rekap-absensi-${todayStr()}.xlsx`);
-  logAktivitas('export_rekap', `Export Excel rekap (${data.length} tercatat + ${tidakAbsen.length} tidak absen)`);
+  XLSX.utils.book_append_sheet(wb, buatWorksheet(rowsPagi), 'ABSEN PAGI');
+  XLSX.utils.book_append_sheet(wb, buatWorksheet(rowsSholat), 'ABSEN SHOLAT');
+  XLSX.utils.book_append_sheet(wb, buatWorksheet(rowsPulang), 'ABSEN PULANG');
+  XLSX.writeFile(wb, `rekap-absensi-${dari}_${sampai}.xlsx`);
+  logAktivitas('export_rekap', `Export Excel rekap 3 sheet (Pagi/Sholat/Pulang) periode ${dari} s/d ${sampai}${kelasFilter?', kelas '+kelasFilter:''} — ${siswaScope.length} siswa, ${tanggalList.length} hari sekolah`);
 });
 
 document.getElementById('btnExportPdf').addEventListener('click', ()=>{
@@ -2970,6 +3104,30 @@ document.getElementById('btnSaveScannerName').addEventListener('click', async ()
   const nama = document.getElementById('inpScannerName').value.trim();
   if(!nama){ toast('Isi nama scanner dulu'); return; }
   if(!sb){ toast('Supabase belum dikonfigurasi'); return; }
+
+  /* Ambil data terbaru dulu supaya pengecekan "sudah pernah didaftarkan" di bawah
+     tidak memakai cache yang basi. */
+  await refreshScannersCache();
+
+  /* PENTING: kalau data tersimpan di HP ini hilang (memori/cache dibersihkan,
+     ganti browser, aplikasi "pembersih" otomatis, dsb) tapi petugas mengetik
+     NAMA YANG SAMA dengan yang sudah pernah didaftarkan & disetujui sebelumnya,
+     sambungkan lagi ke data lama itu — jangan buat pendaftaran baru yang
+     berstatus "pending" dan harus disetujui admin dari awal lagi. Ini penyebab
+     paling umum keluhan "sudah disetujui tapi hari lain diminta disetujui lagi". */
+  const existing = scannersCache.find(s => s.nama.trim().toLowerCase() === nama.toLowerCase());
+  if(existing){
+    scannerDeviceId = existing.id; scannerDeviceName = existing.nama;
+    localStorage.setItem('scanner_device_id', scannerDeviceId);
+    localStorage.setItem('scanner_device_name', scannerDeviceName);
+    logAktivitas('sambung_ulang_scanner', `Perangkat menyambung ulang ke "${existing.nama}" (data lokal HP sebelumnya hilang)`);
+    toast(existing.status && existing.status!=='approved'
+      ? 'Perangkat disambungkan, masih menunggu persetujuan admin'
+      : 'Perangkat tersambung kembali ke data yang sudah disetujui');
+    await initScanPage();
+    return;
+  }
+
   const {data, error} = await sb.from('scanners').insert({nama, lokasi:'', status:'pending', aktif:true}).select().single();
   if(error){ console.error(error); toast('Gagal mendaftarkan scanner'); return; }
   scannerDeviceId = data.id; scannerDeviceName = data.nama;
@@ -2988,11 +3146,37 @@ async function heartbeatScanner(){
 /* ===== Kamera depan/belakang ===== */
 let facingModeAktif = localStorage.getItem('scanner_facing_mode') || 'environment';
 let scannerSedangJalan = false;
+let cameraWatchdogTimer = null;
+let scannerSedangDipulihkan = false;
+
+/* PENTING: qrbox dibuat RESPONSIF (fungsi), bukan angka tetap (220).
+   Kalau qrbox tetap lebih besar daripada ukuran video/viewfinder yang sebenarnya
+   (sering terjadi di HP dengan layar sempit atau kamera yang memberi resolusi kecil),
+   html5-qrcode gagal menggambar area pemindai dan yang terlihat cuma kotak HITAM
+   walau stream kamera sebenarnya jalan normal. Ini salah satu penyebab paling umum
+   keluhan "kamera hitam, tidak bisa scan" di sebagian HP. */
+function hitungQrbox(viewfinderWidth, viewfinderHeight){
+  const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+  const size = Math.max(120, Math.floor(minEdge * 0.7));
+  return { width: size, height: size };
+}
 
 async function mulaiKamera(facingMode){
   if(!html5QrCode) html5QrCode = new Html5Qrcode('reader');
   try{
-    await html5QrCode.start({facingMode}, {fps:10, qrbox:220}, onScanSuccess, ()=>{});
+    await html5QrCode.start(
+      { facingMode },
+      {
+        fps: 10,
+        qrbox: hitungQrbox,
+        /* Batasi resolusi yang diminta ke kamera. Tanpa ini, sebagian HP Android
+           memberi resolusi sangat tinggi yang gagal di-decode/di-render browser
+           dengan mulus, dan hasilnya tampil sebagai layar kamera hitam/beku. */
+        videoConstraints: { facingMode, width:{ideal:1280}, height:{ideal:720} }
+      },
+      onScanSuccess,
+      ()=>{}
+    );
     scannerSedangJalan = true;
     facingModeAktif = facingMode;
     localStorage.setItem('scanner_facing_mode', facingMode);
@@ -3006,15 +3190,78 @@ async function mulaiKamera(facingMode){
          pengguna tetap bisa mencoba toggle depan/belakang secara manual. */
       document.getElementById('btnSwitchCamera').classList.remove('hide');
     });
+    mulaiPengawasKamera();
   }catch(err){
     console.error(err);
     html5QrCode = null; scannerSedangJalan = false;
     const detail = String((err && err.message) || err || '');
-    toast(/permission|denied|notallowed/i.test(detail)
-      ? 'Izin kamera ditolak — izinkan kamera untuk situs ini di pengaturan browser'
-      : 'Gagal mengakses kamera' + (facingMode==='user' ? ' depan' : ' belakang'));
+    let pesan;
+    if(/permission|denied|notallowed/i.test(detail)){
+      pesan = 'Izin kamera ditolak — izinkan kamera untuk situs ini di pengaturan browser (lalu muat ulang halaman)';
+    } else if(/notreadable|trackstart|in use|hardware/i.test(detail)){
+      pesan = 'Kamera sedang dipakai aplikasi lain di HP ini — tutup aplikasi kamera/scan lain lalu coba lagi';
+    } else if(/overconstrained|constraint/i.test(detail)){
+      pesan = 'Kamera HP ini tidak mendukung pengaturan yang diminta — coba tombol ganti kamera depan/belakang';
+    } else {
+      pesan = 'Gagal mengakses kamera' + (facingMode==='user' ? ' depan' : ' belakang');
+    }
+    toast(pesan);
   }
 }
+
+/* ===== Pengawas kesehatan kamera (deteksi layar kamera macet/hitam) =====
+   Di sebagian HP, terutama setelah layar dikunci lalu dibuka lagi atau setelah
+   berpindah aplikasi sebentar, video kamera berhenti mengirim frame baru TANPA
+   memicu error apa pun ke kode — tampilan jadi hitam/beku, padahal dari sisi
+   JavaScript sepertinya kamera "masih menyala". Fungsi ini mengecek berkala apakah
+   elemen <video> benar-benar masih berjalan; kalau macet, kamera dinyalakan ulang
+   otomatis tanpa perlu petugas bolak-balik menekan tombol. */
+function mulaiPengawasKamera(){
+  if(cameraWatchdogTimer) clearInterval(cameraWatchdogTimer);
+  let lastTime = -1;
+  let stuckTicks = 0;
+  cameraWatchdogTimer = setInterval(()=>{
+    if(!scannerSedangJalan || !html5QrCode){ clearInterval(cameraWatchdogTimer); cameraWatchdogTimer = null; return; }
+    const video = document.querySelector('#reader video');
+    if(!video) return;
+    const macet = video.paused || video.ended || video.readyState < 2 || video.currentTime === lastTime;
+    stuckTicks = macet ? stuckTicks + 1 : 0;
+    lastTime = video.currentTime;
+    if(stuckTicks >= 4){ /* ~8 detik tanpa frame baru */
+      stuckTicks = 0;
+      toast('Kamera macet, mencoba menyalakan ulang...');
+      restartKamera();
+    }
+  }, 2000);
+}
+
+async function restartKamera(){
+  const fm = facingModeAktif;
+  clearInterval(cameraWatchdogTimer); cameraWatchdogTimer = null;
+  try{ if(html5QrCode) await html5QrCode.stop(); }catch(e){ /* abaikan */ }
+  html5QrCode = null; scannerSedangJalan = false;
+  await mulaiKamera(fm);
+}
+
+/* Saat halaman disembunyikan (layar dikunci / pindah app), lepas kamera lebih dulu
+   supaya OS/browser tidak membuat sesi kameranya "menggantung" hingga tampil hitam
+   permanen ketika kembali; begitu terlihat lagi, kamera otomatis dinyalakan ulang. */
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState === 'hidden'){
+    if(scannerSedangJalan && html5QrCode){
+      scannerSedangDipulihkan = true;
+      clearInterval(cameraWatchdogTimer); cameraWatchdogTimer = null;
+      const qr = html5QrCode; html5QrCode = null; scannerSedangJalan = false;
+      try{ const p = qr.stop(); if(p && p.catch) p.catch(()=>{}); }catch(e){ /* abaikan */ }
+    }
+  } else if(document.visibilityState === 'visible' && scannerSedangDipulihkan){
+    scannerSedangDipulihkan = false;
+    const scanMainEl = document.getElementById('scanMain');
+    if(scanMainEl && !scanMainEl.classList.contains('hide')){
+      mulaiKamera(facingModeAktif);
+    }
+  }
+});
 
 document.getElementById('btnStartScan').addEventListener('click', ()=>{
   mulaiKamera(facingModeAktif);
@@ -3030,6 +3277,8 @@ document.getElementById('btnSwitchCamera').addEventListener('click', async ()=>{
 });
 document.getElementById('btnStopScan').addEventListener('click', stopScanIfRunning);
 function stopScanIfRunning(){
+  clearInterval(cameraWatchdogTimer); cameraWatchdogTimer = null;
+  scannerSedangDipulihkan = false;
   const qr = html5QrCode;
   html5QrCode = null;
   if(qr){
