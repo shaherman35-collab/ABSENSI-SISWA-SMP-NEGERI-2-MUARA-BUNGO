@@ -475,23 +475,7 @@ input[type=color]{width:44px;height:38px;padding:2px;border:1.5px solid var(--li
       <p class="sub">SMP Negeri 2 Muara Bungo</p>
       <div class="login-err" id="loginWalasErr"></div>
       <label class="field">Kelas</label>
-      <select id="loginWalasKelas">
-        <optgroup label="Kelas 7">
-          <option value="7A">7A</option><option value="7B">7B</option><option value="7C">7C</option>
-          <option value="7D">7D</option><option value="7E">7E</option><option value="7F">7F</option>
-          <option value="7G">7G</option><option value="7H">7H</option><option value="7I">7I</option>
-        </optgroup>
-        <optgroup label="Kelas 8">
-          <option value="8A">8A</option><option value="8B">8B</option><option value="8C">8C</option>
-          <option value="8D">8D</option><option value="8E">8E</option><option value="8F">8F</option>
-          <option value="8G">8G</option><option value="8H">8H</option><option value="8I">8I</option>
-        </optgroup>
-        <optgroup label="Kelas 9">
-          <option value="9A">9A</option><option value="9B">9B</option><option value="9C">9C</option>
-          <option value="9D">9D</option><option value="9E">9E</option><option value="9F">9F</option>
-          <option value="9G">9G</option><option value="9H">9H</option><option value="9I">9I</option>
-        </optgroup>
-      </select>
+      <select id="loginWalasKelas"><option value="">Memuat daftar kelas...</option></select>
       <div class="field-gap"></div>
       <label class="field">Password</label>
       <input type="password" id="loginWalasPassword" placeholder="••••••••" autocomplete="current-password">
@@ -627,6 +611,7 @@ input[type=color]{width:44px;height:38px;padding:2px;border:1.5px solid var(--li
         <button data-p="scanner"><span class="ic">📷</span>Petugas Scanner</button>
         <button data-p="riwayat"><span class="ic">🕘</span>Riwayat Absensi</button>
         <button data-p="rekap"><span class="ic">📊</span>Rekap</button>
+        <button data-p="perbaiki"><span class="ic">🛠️</span>Perbaiki Absen</button>
         <button data-p="log"><span class="ic">📜</span>Log Aktivitas</button>
         <button data-p="cetak"><span class="ic">🪪</span>Cetak Kartu</button>
         <button data-p="desain"><span class="ic">🎨</span>Desain Kartu</button>
@@ -843,6 +828,24 @@ input[type=color]{width:44px;height:38px;padding:2px;border:1.5px solid var(--li
           <div class="card" style="margin-top:16px;">
             <h2 style="margin:0 0 12px;font-size:1rem;">Arsip Rekap</h2>
             <div id="listArsipRekap"></div>
+          </div>
+        </section>
+
+        <!-- PERBAIKI ABSEN BERDASARKAN TANGGAL -->
+        <section class="admin-page hide" id="ap-perbaiki">
+          <div class="card">
+            <h2 style="margin:0 0 4px;font-size:1rem;">Perbaiki Absen berdasarkan Tanggal</h2>
+            <p style="margin:0 0 12px;font-size:.8rem;color:var(--muted);">Untuk siswa yang sebenarnya hadir tapi lupa/tidak sempat scan QR pada tanggal tertentu (termasuk tanggal yang sudah lewat). Pilih tanggal, kelas, dan jenis absen, lalu centang siswa yang perlu ditambahkan/diperbaiki catatannya.</p>
+            <div class="filters-row">
+              <div><label class="field">Tanggal</label><input type="date" id="inpTanggalPerbaiki"></div>
+              <div><label class="field">Kelas</label><select id="selKelasPerbaiki"><option value="">Semua kelas</option></select></div>
+              <div><label class="field">Jenis Absen</label><select id="selJenisPerbaiki">
+                <option value="Pagi">Pagi</option><option value="Sholat">Sholat</option><option value="Pulang">Pulang</option>
+              </select></div>
+              <div><button class="btn btn-navy" id="btnCariPerbaiki">🔍 Cari Siswa Belum Absen</button></div>
+            </div>
+            <div class="field-gap"></div>
+            <div id="hasilPerbaiki"><div class="empty">Pilih tanggal, kelas &amp; jenis absen, lalu klik "Cari Siswa Belum Absen".</div></div>
           </div>
         </section>
 
@@ -1268,9 +1271,28 @@ document.getElementById('btnGoLoginHero').addEventListener('click', ()=>showView
 document.getElementById('btnGoScanNav').addEventListener('click', ()=>{ showView('scan'); initScanPage(); });
 document.getElementById('btnGoScanHero').addEventListener('click', ()=>{ showView('scan'); initScanPage(); });
 document.getElementById('btnBackFromLogin').addEventListener('click', (e)=>{ e.preventDefault(); showView('landing'); });
-document.getElementById('btnGoLoginWalas').addEventListener('click', ()=>showView('login-walas'));
+/* Daftar kelas untuk dropdown login Wali Kelas HARUS diambil langsung dari data siswa
+   yang sesungguhnya (tabel `siswa`), bukan daftar statis (dulu hardcode "7A".."9I").
+   Ini memperbaiki bug: format kelas asli di data siswa/absen (mis. "VII-A") berbeda
+   dari daftar statis lama, sehingga wali kelas yang login selalu difilter dengan nilai
+   kelas yang TIDAK PERNAH cocok dengan data apa pun -> rekap tampak "stuck"/kosong
+   selamanya walau data aslinya ada (rekap admin aman karena dropdown admin memang
+   sudah dibangun dinamis dari data asli lewat refreshKelasSelect()). */
+async function loadKelasListUntukLoginWalas(){
+  const sel = document.getElementById('loginWalasKelas');
+  if(!sel) return;
+  if(!sb){ sel.innerHTML = '<option value="">Supabase belum dikonfigurasi</option>'; return; }
+  sel.innerHTML = '<option value="">Memuat daftar kelas...</option>';
+  const {data, error} = await sb.from('siswa').select('kelas');
+  if(error){ console.error(error); sel.innerHTML = '<option value="">Gagal memuat daftar kelas</option>'; return; }
+  const kelasList = [...new Set((data||[]).map(s=>s.kelas).filter(Boolean))].sort();
+  sel.innerHTML = kelasList.length
+    ? kelasList.map(k=>`<option value="${escHtml(k)}">${escHtml(k)}</option>`).join('')
+    : '<option value="">Belum ada data kelas</option>';
+}
+document.getElementById('btnGoLoginWalas').addEventListener('click', ()=>{ showView('login-walas'); loadKelasListUntukLoginWalas(); });
 const btnGoLoginWalasHero = document.getElementById('btnGoLoginWalasHero');
-if(btnGoLoginWalasHero) btnGoLoginWalasHero.addEventListener('click', ()=>showView('login-walas'));
+if(btnGoLoginWalasHero) btnGoLoginWalasHero.addEventListener('click', ()=>{ showView('login-walas'); loadKelasListUntukLoginWalas(); });
 document.getElementById('btnBackFromLoginWalas').addEventListener('click', (e)=>{ e.preventDefault(); showView('landing'); });
 document.getElementById('btnExitScan').addEventListener('click', ()=>{ logAktivitas('logout', `${scannerDeviceName||'Perangkat'} keluar dari mode scan`); stopScanIfRunning();
   if(scanHeartbeatTimer){ clearInterval(scanHeartbeatTimer); scanHeartbeatTimer = null; }
@@ -1572,7 +1594,7 @@ if(sb) subscribeRealtime();
 
 /* ================= ADMIN SIDEBAR ROUTER ================= */
 const ADMIN_TITLES = {dashboard:'Dashboard', siswa:'Data Siswa', kelas:'Data Kelas', scanner:'Petugas Scanner',
-  riwayat:'Riwayat Absensi', rekap:'Rekap', log:'Log Aktivitas', cetak:'Cetak Kartu', desain:'Desain Kartu', pengaturan:'Pengaturan'};
+  riwayat:'Riwayat Absensi', rekap:'Rekap', perbaiki:'Perbaiki Absen', log:'Log Aktivitas', cetak:'Cetak Kartu', desain:'Desain Kartu', pengaturan:'Pengaturan'};
 
 function showAdminPage(name){
   document.querySelectorAll('.admin-nav button').forEach(b=>b.classList.toggle('active', b.dataset.p===name));
@@ -1590,6 +1612,13 @@ function showAdminPage(name){
     const selScanner = document.getElementById('selRekapScanner');
     selScanner.innerHTML = '<option value="">Semua</option>' + scannersCache.map(s=>`<option value="${s.nama}">${s.nama}</option>`).join('');
     renderArsipRekap();
+  }
+  if(name==='perbaiki'){
+    refreshKelasSelect();
+    const selKelasP = document.getElementById('selKelasPerbaiki');
+    if(selKelasP && !selKelasP.value && selKelasP.options.length>1) selKelasP.selectedIndex = 1;
+    document.getElementById('inpTanggalPerbaiki').value = todayStr();
+    document.getElementById('hasilPerbaiki').innerHTML = '<div class="empty">Pilih tanggal, kelas &amp; jenis absen, lalu klik "Cari Siswa Belum Absen".</div>';
   }
   if(name==='log') renderLogAktivitas();
   if(name==='cetak') refreshKelasSelect();
@@ -1671,7 +1700,7 @@ document.getElementById('fileExcel').addEventListener('change', (e)=>{
 /* ================= DATA KELAS ================= */
 function refreshKelasSelect(){
   const kelasList = [...new Set(loadSiswa().map(s=>s.kelas))].sort();
-  ['selKelasBarcode','selKelasRekap','selKelasRiwayat'].forEach(id=>{
+  ['selKelasBarcode','selKelasRekap','selKelasRiwayat','selKelasPerbaiki'].forEach(id=>{
     const sel = document.getElementById(id);
     if(!sel) return;
     const current = sel.value;
@@ -3471,6 +3500,92 @@ document.getElementById('btnSimpanManual').addEventListener('click', async ()=>{
   document.getElementById('scanManualPanel').classList.add('hide');
   document.getElementById('scanMain').classList.remove('hide');
 });
+
+/* ================= PERBAIKI ABSEN BERDASARKAN TANGGAL ================= */
+/* Untuk kasus siswa yang sebenarnya hadir tapi lupa/tidak sempat scan QR pada
+   tanggal tertentu (termasuk tanggal yang sudah lewat, bukan cuma hari ini). */
+let hasilPerbaikiData = [];
+document.getElementById('btnCariPerbaiki').addEventListener('click', async ()=>{
+  if(!sb){ toast('Supabase belum dikonfigurasi'); return; }
+  const tgl = document.getElementById('inpTanggalPerbaiki').value;
+  const kelas = document.getElementById('selKelasPerbaiki').value;
+  const jenis = document.getElementById('selJenisPerbaiki').value;
+  const box = document.getElementById('hasilPerbaiki');
+  if(!tgl){ toast('Pilih tanggal dulu'); return; }
+  if(!kelas){ toast('Pilih kelas dulu (untuk mencegah daftar terlalu panjang)'); return; }
+  box.innerHTML = '<div class="empty">Memuat...</div>';
+  const {data, error} = await fetchSemuaBaris(()=>sb.from('absen').select('nama,kelas,jenis').eq('tanggal', tgl).eq('kelas', kelas));
+  if(error){ console.error(error); box.innerHTML = '<div class="empty">Gagal memuat data — pastikan migrasi SQL sudah dijalankan</div>'; return; }
+  const sudahSet = new Set((data||[]).filter(a=>jenisAbsen(a)===jenis).map(a=>a.nama+'|'+a.kelas));
+  const siswaKelas = siswaCache.filter(s=>s.kelas===kelas).sort((a,b)=>a.nama.localeCompare(b.nama));
+  hasilPerbaikiData = siswaKelas.filter(s=>!sudahSet.has(s.nama+'|'+s.kelas));
+  renderHasilPerbaiki(tgl, kelas, jenis, siswaKelas.length);
+});
+function renderHasilPerbaiki(tgl, kelas, jenis, totalSiswaKelas){
+  const box = document.getElementById('hasilPerbaiki');
+  if(hasilPerbaikiData.length===0){
+    box.innerHTML = `<div class="empty">🎉 Semua ${totalSiswaKelas} siswa kelas ${escHtml(kelas)} sudah tercatat absen ${escHtml(jenis)} pada ${new Date(tgl+'T12:00:00').toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'})}.</div>`;
+    return;
+  }
+  box.innerHTML = `
+    <div style="margin-bottom:8px;font-size:.8rem;color:var(--muted);">
+      <b>${hasilPerbaikiData.length}</b> dari ${totalSiswaKelas} siswa kelas ${escHtml(kelas)} belum tercatat absen ${escHtml(jenis)} pada tanggal ini. Centang siswa yang sebenarnya hadir, atur statusnya, lalu simpan.
+    </div>
+    <div style="margin-bottom:8px;"><label style="display:flex;align-items:center;gap:6px;font-size:.85rem;">
+      <input type="checkbox" id="chkPerbaikiSemua"> Centang semua
+    </label></div>
+    <div style="max-height:360px;overflow-y:auto;">
+      <table><thead><tr><th style="width:36px;"></th><th>Nama</th><th>Status</th></tr></thead>
+        <tbody id="tblPerbaiki">
+          ${hasilPerbaikiData.map((s,i)=>`<tr>
+            <td><input type="checkbox" class="chkPerbaikiRow" data-i="${i}"></td>
+            <td>${escHtml(s.nama)}</td>
+            <td><select class="selPerbaikiStatus" data-i="${i}" style="width:auto;">
+              <option value="Hadir">Hadir</option><option value="Terlambat">Terlambat</option>
+              <option value="Sakit">Sakit</option><option value="Izin">Izin</option><option value="Dispensasi">Dispensasi</option>
+            </select></td>
+          </tr>`).join('')}
+        </tbody></table>
+    </div>
+    <div class="field-gap"></div>
+    <label class="field">Keterangan (opsional, berlaku untuk semua yang dicentang)</label>
+    <input type="text" id="inpKeteranganPerbaiki" placeholder="mis. Koreksi: lupa scan QR">
+    <div class="field-gap"></div>
+    <button class="btn btn-navy" id="btnSimpanPerbaiki">💾 Simpan Perbaikan</button>
+  `;
+  document.getElementById('chkPerbaikiSemua').addEventListener('change', (e)=>{
+    document.querySelectorAll('.chkPerbaikiRow').forEach(c=>c.checked = e.target.checked);
+  });
+  document.getElementById('btnSimpanPerbaiki').addEventListener('click', async ()=>{
+    await simpanPerbaikiAbsen(tgl, kelas, jenis);
+  });
+}
+async function simpanPerbaikiAbsen(tgl, kelas, jenis){
+  const rows = [...document.querySelectorAll('.chkPerbaikiRow')].filter(c=>c.checked).map(c=>Number(c.dataset.i));
+  if(rows.length===0){ toast('Belum ada siswa yang dicentang'); return; }
+  const keterangan = document.getElementById('inpKeteranganPerbaiki').value.trim() || 'Koreksi absen oleh admin (siswa hadir tapi lupa scan)';
+  const btn = document.getElementById('btnSimpanPerbaiki');
+  btn.disabled = true; btn.textContent = 'Menyimpan...';
+  const jamDefault = (tgl===todayStrServer()) ? nowTimeServer() : '07:00';
+  const entries = rows.map(i=>{
+    const s = hasilPerbaikiData[i];
+    const statusSel = document.querySelector(`.selPerbaikiStatus[data-i="${i}"]`);
+    const status = statusSel ? statusSel.value : 'Hadir';
+    return {nama:s.nama, kelas:s.kelas, tanggal:tgl, jam:jamDefault, status,
+      scanner: currentAdminEmail || 'Admin (Perbaiki Absen)', jenis, cara:'Koreksi', keterangan};
+  });
+  const {error} = await sb.from('absen').insert(entries);
+  btn.disabled = false; btn.textContent = '💾 Simpan Perbaikan';
+  if(error){
+    console.error(error);
+    toast('Gagal simpan — ' + (error.message || 'cek koneksi') + (error.code==='23505' ? ' (ada siswa yang ternyata sudah tercatat absen ini)' : ''));
+    return;
+  }
+  logAktivitas('absen_manual', `Admin memperbaiki absen ${jenis} tanggal ${tgl} untuk ${entries.length} siswa kelas ${kelas} (${entries.map(e=>e.nama).join(', ')})`);
+  toast(`${entries.length} data absensi berhasil diperbaiki`);
+  await refreshAbsenCache();
+  document.getElementById('btnCariPerbaiki').click();
+}
 
 /* ================= INIT ================= */
 (function ensurePrintAreaRekap(){
