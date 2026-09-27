@@ -1950,12 +1950,16 @@ document.getElementById('selHariIniJenis').addEventListener('change', renderReka
      bukan hanya siswa yang punya baris di tabel `absen`.
    - Kolom tanggal dibatasi ke hari sekolah (Senin-Jumat) dalam rentang periode yang dipilih di kartu Rekap,
      konsisten dengan hariKeyFromDate() yang sudah dipakai di tempat lain (mis. computeRekapRange).
-   - Kode Pagi: H=Hadir, T=Terlambat, A=Tidak Absen (status lain seperti Sakit/Izin/Dispensasi/Alpha,
-     atau tidak ada catatan sama sekali, ikut dihitung A supaya tetap konsisten dengan 3 kode yang diminta).
+   - Kode Pagi: H=Hadir, T=Terlambat, S=Sakit, I=Izin, D=Dispensasi, A=Alfa/Tidak Absen (tidak ada
+     catatan sama sekali). Status Sakit/Izin/Dispensasi TIDAK ikut dihitung A lagi — masing-masing
+     punya kode & kolom ringkasan sendiri, supaya rekap tidak menganggap siswa sakit/izin sebagai alfa.
    - Kode Sholat & Pulang: H = ada catatan absen pada jenis tsb, A = tidak ada catatan. */
 function kodeAbsenPagi(status){
   if(status==='Hadir') return 'H';
   if(status==='Terlambat') return 'T';
+  if(status==='Sakit') return 'S';
+  if(status==='Izin') return 'I';
+  if(status==='Dispensasi') return 'D';
   return 'A';
 }
 function daftarTanggalHariSekolah(dari, sampai){
@@ -2022,7 +2026,7 @@ document.getElementById('btnExportRekap').addEventListener('click', async ()=>{
   }
 
   const rowsPagi = buatBarisSheet('Pagi', kodeAbsenPagi,
-    [{label:'Hadir',kode:'H'},{label:'Terlambat',kode:'T'},{label:'Tidak Absen',kode:'A'}]);
+    [{label:'Hadir',kode:'H'},{label:'Terlambat',kode:'T'},{label:'Sakit',kode:'S'},{label:'Izin',kode:'I'},{label:'Dispensasi',kode:'D'},{label:'Alfa',kode:'A'}]);
   const rowsSholat = buatBarisSheet('Sholat', (status)=> status ? 'H' : 'A',
     [{label:'Hadir',kode:'H'},{label:'Tidak Absen',kode:'A'}]);
   const rowsPulang = buatBarisSheet('Pulang', (status)=> status ? 'H' : 'A',
