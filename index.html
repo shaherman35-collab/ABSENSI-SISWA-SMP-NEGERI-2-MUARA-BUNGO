@@ -491,6 +491,7 @@ input[type=color]{width:44px;height:38px;padding:2px;border:1.5px solid var(--li
         <div style="display:grid;gap:12px;">
           <button class="btn btn-navy block" style="padding:18px;font-size:1.05rem;" id="btnPilihJenisPagi">🌅 Absen Pagi</button>
           <button class="btn btn-navy block" style="padding:18px;font-size:1.05rem;" id="btnPilihJenisSholat">🕌 Absen Sholat</button>
+          <button class="btn btn-navy block" style="padding:18px;font-size:1.05rem;" id="btnPilihJenisAlkitab">📖 Hafalan Alkitab (Non-Muslim)</button>
           <button class="btn btn-navy block" style="padding:18px;font-size:1.05rem;" id="btnPilihJenisPulang">🏠 Absen Pulang</button>
         </div>
       </div>
@@ -719,7 +720,7 @@ input[type=color]{width:44px;height:38px;padding:2px;border:1.5px solid var(--li
             <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
               <h2 style="margin:0;font-size:1rem;">Rekap Hari Ini (ringkas)</h2>
               <select id="selHariIniJenis" style="width:auto;min-width:170px;">
-                <option value="Pagi">Absen Pagi</option><option value="Sholat">Absen Sholat</option><option value="Pulang">Absen Pulang</option>
+                <option value="Pagi">Absen Pagi</option><option value="Sholat">Absen Sholat</option><option value="Alkitab">Hafalan Alkitab</option><option value="Pulang">Absen Pulang</option>
               </select>
             </div>
             <div class="stat-row" style="grid-template-columns:repeat(4,1fr);">
@@ -742,11 +743,13 @@ input[type=color]{width:44px;height:38px;padding:2px;border:1.5px solid var(--li
 
           <div class="card" style="margin-top:16px;">
             <h2 style="margin:0 0 12px;font-size:1rem;">Rekap Terpisah per Jenis Absensi (Hari Ini)</h2>
-            <div class="stat-row" style="grid-template-columns:repeat(3,1fr);">
+            <div class="stat-row" style="grid-template-columns:repeat(4,1fr);">
               <div class="stat-card"><div class="ic-wrap" style="background:#e7ecfb;color:var(--navy-3);">🌅</div>
                 <div><div class="num" id="statPagi">0</div><div class="lbl">Absen Pagi</div></div></div>
               <div class="stat-card"><div class="ic-wrap" style="background:#f1e9fb;color:#6a3fb5;">🕌</div>
                 <div><div class="num" id="statSholat">0</div><div class="lbl">Absen Sholat</div></div></div>
+              <div class="stat-card"><div class="ic-wrap" style="background:#e7f7ee;color:var(--success);">📖</div>
+                <div><div class="num" id="statAlkitab">0</div><div class="lbl">Hafalan Alkitab</div></div></div>
               <div class="stat-card"><div class="ic-wrap" style="background:#e7ecfb;color:var(--navy-3);">🏠</div>
                 <div><div class="num" id="statPulang">0</div><div class="lbl">Absen Pulang</div></div></div>
             </div>
@@ -774,7 +777,7 @@ input[type=color]{width:44px;height:38px;padding:2px;border:1.5px solid var(--li
               <div><label class="field">Nama Siswa</label><input type="text" id="inpRekapNama" placeholder="Cari nama..."></div>
               <div><label class="field">Status</label><select id="selRekapStatus"><option value="">Semua status</option>
                 <option>Hadir</option><option>Terlambat</option><option>Sakit</option><option>Izin</option><option>Alpha</option><option>Dispensasi</option></select></div>
-              <div><label class="field">Jenis</label><select id="selRekapJenis"><option value="">Semua</option><option>Pagi</option><option>Sholat</option><option>Pulang</option></select></div>
+              <div><label class="field">Jenis</label><select id="selRekapJenis"><option value="">Semua</option><option>Pagi</option><option>Sholat</option><option value="Alkitab">Alkitab</option><option>Pulang</option></select></div>
               <div><label class="field">Cara Absensi</label><select id="selRekapCara"><option value="">Semua</option><option>QR</option><option>Manual</option></select></div>
               <div><label class="field">Petugas Scanner</label><select id="selRekapScanner"><option value="">Semua</option></select></div>
             </div>
@@ -808,7 +811,7 @@ input[type=color]{width:44px;height:38px;padding:2px;border:1.5px solid var(--li
               <div><label class="field">Tanggal</label><input type="date" id="inpTanggalPerbaiki"></div>
               <div><label class="field">Kelas</label><select id="selKelasPerbaiki"><option value="">Semua kelas</option></select></div>
               <div><label class="field">Jenis Absen</label><select id="selJenisPerbaiki">
-                <option value="Pagi">Pagi</option><option value="Sholat">Sholat</option><option value="Pulang">Pulang</option>
+                <option value="Pagi">Pagi</option><option value="Sholat">Sholat</option><option value="Alkitab">Hafalan Alkitab</option><option value="Pulang">Pulang</option>
               </select></div>
               <div><button class="btn btn-navy" id="btnCariPerbaiki">🔍 Cari Siswa Belum Absen</button></div>
             </div>
@@ -1158,9 +1161,23 @@ let jamMasukSudahDimuat = false;
 const SHOLAT_MULAI = '11:30';
 const SHOLAT_SELESAI = '13:00';
 
+/* Jadwal Hafalan Alkitab (kegiatan rohani siswa non-Muslim): satu sesi Pagi, Senin-Jumat.
+   Ubah jam di bawah bila jadwal kegiatan berbeda. */
+const ALKITAB_SESI = [
+  {nama:'Pagi',  mulai:'06:30', selesai:'08:00'},
+];
+function sesiAlkitabAktif(jam){
+  return ALKITAB_SESI.find(x=> jam>=x.mulai && jam<=x.selesai) || null;
+}
+
 /* Cek apakah waktu `jam` (HH:MM) berada dalam jendela absen untuk `jenis` (Pagi/Sholat/Pulang) pada jadwal hari `j`.
    Mengembalikan {ok:boolean, pesan?:string} */
 function cekJendelaAbsen(jenis, jam, j){
+  if(jenis==='Alkitab'){
+    const sesi = sesiAlkitabAktif(jam);
+    if(sesi) return {ok:true, sesi:sesi.nama};
+    return {ok:false, pesan:`Jadwal Hafalan Alkitab belum dibuka atau telah ditutup (${ALKITAB_SESI.map(x=>`Sesi ${x.nama} ${x.mulai}-${x.selesai}`).join(', ')} WIB)`};
+  }
   if(jenis==='Sholat'){
     if(jam>=SHOLAT_MULAI && jam<=SHOLAT_SELESAI) return {ok:true};
     return {ok:false, pesan:`Jadwal absensi Sholat belum dibuka atau telah ditutup (jam ${SHOLAT_MULAI}-${SHOLAT_SELESAI} WIB)`};
@@ -1808,17 +1825,43 @@ function renderRekapHariIni(){
   const sudahSet = siswaSudahAbsen(absenHariIni, jenisSel);
   const hadir = absenJenis.filter(a=>a.status==='Hadir').length;
   const telat = absenJenis.filter(a=>a.status==='Terlambat').length;
-  const alpa = siswaAll.filter(s=>!sudahSet.has(s.nama+'|'+s.kelas)).length;
+  const alpa = siswaAll.filter(s=>!sudahSet.has(s.nama+'|'+s.kelas)).length; // untuk Alkitab tidak dipakai (hanya peserta yg absen)
   const dispensasi = absenJenis.filter(a=>a.status==='Dispensasi').length;
   const jml = (j)=> absenHariIni.filter(a=>jenisAbsen(a)===j).length;
   document.getElementById('statHadir').textContent = hadir;
   document.getElementById('statTelat').textContent = telat;
-  document.getElementById('statAlpa').textContent = alpa;
+  document.getElementById('statAlpa').textContent = jenisSel==='Alkitab' ? '–' : alpa;
   document.getElementById('statPagi').textContent = jml('Pagi');
   document.getElementById('statSholat').textContent = jml('Sholat');
+  document.getElementById('statAlkitab').textContent = jml('Alkitab');
   document.getElementById('statPulang').textContent = jml('Pulang');
   document.getElementById('statDispensasi').textContent = dispensasi;
-  renderBelumAbsenPerKelas(siswaAll, sudahSet, jenisSel);
+  if(jenisSel==='Alkitab') renderPesertaAlkitab(absenJenis); else renderBelumAbsenPerKelas(siswaAll, sudahSet, jenisSel);
+}
+
+/* Hafalan Alkitab hanya diikuti siswa non-Muslim, jadi TIDAK ada konsep "belum absen".
+   Yang ditampilkan: siswa yang sudah absen hari ini, dikelompokkan per kelas. */
+function renderPesertaAlkitab(absenJenis){
+  const grid = document.getElementById('rekapBelumAbsenGrid');
+  if(!grid) return;
+  if(absenJenis.length===0){
+    grid.innerHTML = `<div class="empty">Belum ada siswa yang absen Hafalan Alkitab hari ini</div>`;
+    return;
+  }
+  const kelasList = [...new Set(absenJenis.map(a=>a.kelas))].sort();
+  grid.innerHTML = `<div style="margin-bottom:10px;font-size:.8rem;color:var(--muted);">Hafalan Alkitab hari ini: <b>${absenJenis.length}</b> siswa dari <b>${kelasList.length}</b> kelas (hanya peserta kegiatan; tidak ada daftar \"belum absen\").</div>` +
+    kelasList.map(k=>{
+      const list = absenJenis.filter(a=>a.kelas===k).sort((a,b)=>a.nama.localeCompare(b.nama));
+      return `<div class="scanner-card" style="margin-bottom:10px;">
+        <div class="name" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+          <span>📖 ${escHtml(k)}</span>
+          <span class="pill hadir">${list.length} siswa</span>
+        </div>
+        <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;">
+          ${list.map(a=>`<span class="pill" style="background:#e7f7ee;color:#1d7a46;">${escHtml(a.nama)}${a.keterangan?' · '+escHtml(a.keterangan):''}</span>`).join('')}
+        </div>
+      </div>`;
+    }).join('');
 }
 
 function renderBelumAbsenPerKelas(siswaAll, sudahSet, jenisSel){
@@ -1968,10 +2011,10 @@ document.getElementById('btnExportRekap').addEventListener('click', async ()=>{
   const peta = new Map();
   (data||[]).forEach(a=>{ peta.set(`${a.tanggal}|${a.nama}|${a.kelas}|${jenisAbsen(a)}`, a.status); });
 
-  function buatBarisSheet(jenis, kodeFn, ringkasanDef){
+  function buatBarisSheet(jenis, kodeFn, ringkasanDef, scope){
     const header = ['No','Nama','Kelas', ...kolomTanggal, ...ringkasanDef.map(d=>d.label)];
     const rows = [header];
-    siswaScope.forEach((s, idx)=>{
+    (scope||siswaScope).forEach((s, idx)=>{
       const kodeHarian = tanggalList.map(tgl=>kodeFn(peta.get(`${tgl}|${s.nama}|${s.kelas}|${jenis}`)));
       const ringkasan = ringkasanDef.map(d=>kodeHarian.filter(k=>k===d.kode).length);
       rows.push([idx+1, s.nama, s.kelas, ...kodeHarian, ...ringkasan]);
@@ -2000,12 +2043,18 @@ document.getElementById('btnExportRekap').addEventListener('click', async ()=>{
   const rowsPulang = buatBarisSheet('Pulang', (status)=> status ? 'H' : 'A',
     [{label:'Sudah Pulang',kode:'H'},{label:'Belum Absen',kode:'A'}]);
 
+  /* Hafalan Alkitab: hanya siswa yang pernah absen pada periode ini (peserta non-Muslim), tanpa kode Alfa */
+  const siswaAlkitab = siswaScope.filter(s=> tanggalList.some(tgl=>peta.has(`${tgl}|${s.nama}|${s.kelas}|Alkitab`)));
+  const rowsAlkitab = buatBarisSheet('Alkitab', (status)=> status ? 'H' : '-',
+    [{label:'Jumlah Hadir',kode:'H'}], siswaAlkitab);
+
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, buatWorksheet(rowsPagi), 'ABSEN PAGI');
   XLSX.utils.book_append_sheet(wb, buatWorksheet(rowsSholat), 'ABSEN SHOLAT');
+  if(siswaAlkitab.length>0) XLSX.utils.book_append_sheet(wb, buatWorksheet(rowsAlkitab), 'HAFALAN ALKITAB');
   XLSX.utils.book_append_sheet(wb, buatWorksheet(rowsPulang), 'ABSEN PULANG');
   XLSX.writeFile(wb, `rekap-absensi-${dari}_${sampai}.xlsx`);
-  logAktivitas('export_rekap', `Export Excel rekap 3 sheet (Pagi/Sholat/Pulang) periode ${dari} s/d ${sampai}${kelasFilter?', kelas '+kelasFilter:''} — ${siswaScope.length} siswa, ${tanggalList.length} hari sekolah`);
+  logAktivitas('export_rekap', `Export Excel rekap (Pagi/Sholat/Pulang + Hafalan Alkitab bila ada) periode ${dari} s/d ${sampai}${kelasFilter?', kelas '+kelasFilter:''} — ${siswaScope.length} siswa, ${tanggalList.length} hari sekolah`);
 });
 
 document.getElementById('btnExportPdf').addEventListener('click', ()=>{
@@ -3081,7 +3130,7 @@ async function initScanPage(){
 
 /* ================= PILIH JENIS ABSENSI ================= */
 let jenisAbsenDipilih = null;
-const JENIS_LABEL = {Pagi:'Scanner Absensi Pagi', Sholat:'Scanner Absensi Sholat', Pulang:'Scanner Absensi Pulang'};
+const JENIS_LABEL = {Pagi:'Scanner Absensi Pagi', Sholat:'Scanner Absensi Sholat', Alkitab:'Scanner Hafalan Alkitab', Pulang:'Scanner Absensi Pulang'};
 function pilihJenisAbsen(jenis){
   jenisAbsenDipilih = jenis;
   document.getElementById('scanJenisPilih').classList.add('hide');
@@ -3091,6 +3140,7 @@ function pilihJenisAbsen(jenis){
 }
 document.getElementById('btnPilihJenisPagi').addEventListener('click', ()=>pilihJenisAbsen('Pagi'));
 document.getElementById('btnPilihJenisSholat').addEventListener('click', ()=>pilihJenisAbsen('Sholat'));
+document.getElementById('btnPilihJenisAlkitab').addEventListener('click', ()=>pilihJenisAbsen('Alkitab'));
 document.getElementById('btnPilihJenisPulang').addEventListener('click', ()=>pilihJenisAbsen('Pulang'));
 document.getElementById('btnGantiJenis').addEventListener('click', ()=>{
   stopScanIfRunning();
@@ -3480,12 +3530,13 @@ async function onScanSuccess(decodedText){
   }
   const sudah = absenCache.find(a=>a.nama===siswa.nama && a.kelas===siswa.kelas && a.tanggal===tgl && (a.jenis||'Pagi')===jenis);
   if(sudah){
-    showScanResult(false, `${siswa.nama} sudah tercatat absen ${jenis} hari ini (jam ${sudah.jam}${sudah.scanner?', scanner '+sudah.scanner:''}${sudah.cara==='Manual'?', input manual':''})`);
+    showScanResult(false, `${siswa.nama} sudah tercatat ${jenis==='Alkitab'?'hafalan Alkitab':'absen '+jenis} hari ini (jam ${sudah.jam}${sudah.scanner?', scanner '+sudah.scanner:''}${sudah.cara==='Manual'?', input manual':''})`);
     beep(false); ucapkanStatus(`${siswa.nama}, sudah absen`); return;
   }
 
   const telat = jenis==='Pagi' && jam > jadwalHari.batas;
   const entry = {nama:siswa.nama, kelas:siswa.kelas, tanggal:tgl, jam, status: telat?'Terlambat':'Hadir', scanner: scannerDeviceName, jenis, cara:'QR'};
+  if(jenis==='Alkitab' && cekJendela.sesi) entry.keterangan = 'Sesi ' + cekJendela.sesi;
   absenCache.push(entry);
   const {error} = await sb.from('absen').insert(entry);
   if(error){
@@ -3510,13 +3561,13 @@ async function onScanSuccess(decodedText){
     <div style="margin-top:4px;"><span class="pill ${telat?'telat':'hadir'}">${telat?'Terlambat':'Absen '+jenis}</span></div>
     <div class="scan-result-meta">
       Kelas &nbsp; ${siswa.kelas}<br>
-      Waktu &nbsp; ${jam}<br>
+      Waktu &nbsp; ${jam}${jenis==='Alkitab' && cekJendela.sesi ? ' (Sesi '+cekJendela.sesi+')' : ''}<br>
       Tanggal &nbsp; ${new Date(tgl+'T12:00:00').toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'})}<br>
       Scanner &nbsp; ${scannerDeviceName}
     </div>`;
-  prependScanHistory(siswa.nama, siswa.kelas, jam, telat, 'Absen '+jenis);
+  prependScanHistory(siswa.nama, siswa.kelas, jam, telat, jenis==='Alkitab' ? 'Hafalan Alkitab' : 'Absen '+jenis);
   beep(true);
-  ucapkanStatus(jenis==='Pagi' ? `${siswa.nama}, ${telat?'Terlambat':'Hadir'}` : `${siswa.nama}, Absen ${jenis} berhasil`);
+  ucapkanStatus(jenis==='Pagi' ? `${siswa.nama}, ${telat?'Terlambat':'Hadir'}` : (jenis==='Alkitab' ? `${siswa.nama}, hafalan Alkitab tercatat` : `${siswa.nama}, Absen ${jenis} berhasil`));
 }
 
 function showScanResult(ok, msg){
