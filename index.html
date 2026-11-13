@@ -1164,7 +1164,7 @@ const SHOLAT_SELESAI = '13:00';
 /* Jadwal Hafalan Alkitab (kegiatan rohani siswa non-Muslim): satu sesi Pagi, Senin-Jumat.
    Ubah jam di bawah bila jadwal kegiatan berbeda. */
 const ALKITAB_SESI = [
-  {nama:'Pagi',  mulai:'06:30', selesai:'08:00'},
+  {nama:'Pagi',  mulai:'07:15', selesai:'08:30'},
 ];
 function sesiAlkitabAktif(jam){
   return ALKITAB_SESI.find(x=> jam>=x.mulai && jam<=x.selesai) || null;
