@@ -837,6 +837,21 @@ input[type=color]{width:44px;height:38px;padding:2px;border:1.5px solid var(--li
         <!-- CETAK KARTU -->
         <section class="admin-page hide" id="ap-cetak">
           <div class="card">
+            <h2 style="margin:0 0 4px;font-size:1rem;">🔎 Cetak Per Nama (kartu hilang / rusak)</h2>
+            <p style="margin:0 0 12px;font-size:.8rem;color:var(--muted);">Cari siswa, tambahkan ke <b>Daftar Cetak</b>. Boleh dari kelas dan tingkat yang berbeda (mis. 7B dan 9A) &mdash; semuanya dicetak bersama dalam satu halaman supaya kertas tidak terbuang.</p>
+            <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px;">
+              <div><label class="field">Kelas</label><select id="selKelasCariKartu"><option value="">Semua kelas</option></select></div>
+              <div><label class="field">Cari Nama</label><input type="text" id="inpCariKartu" placeholder="Ketik nama siswa..." autocomplete="off"></div>
+            </div>
+            <div id="hasilCariKartu" style="margin-top:10px;max-height:260px;overflow:auto;border:1px solid var(--line,#e3e7f0);border-radius:10px;"></div>
+            <div style="margin-top:14px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+              <b style="font-size:.9rem;">Daftar Cetak (<span id="jmlAntrianKartu">0</span> siswa)</b>
+              <button class="btn btn-outline" id="btnKosongkanAntrian" style="padding:6px 12px;font-size:.78rem;">Kosongkan</button>
+            </div>
+            <div id="antrianKartu" style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;"></div>
+            <button class="btn btn-navy block" id="btnPreviewAntrian" style="margin-top:12px;">🖨 Buat Pratinjau dari Daftar Cetak</button>
+          </div>
+          <div class="card">
             <h2 style="margin:0 0 4px;font-size:1rem;">Generate & Cetak Kartu Barcode</h2>
             <p style="margin:0 0 14px;font-size:.8rem;color:var(--muted);">Barcode dibuat otomatis dari Nama & Kelas tiap siswa.</p>
             <label class="field">Filter Kelas</label>
@@ -1685,7 +1700,7 @@ document.getElementById('fileExcel').addEventListener('change', (e)=>{
 /* ================= DATA KELAS ================= */
 function refreshKelasSelect(){
   const kelasList = [...new Set(loadSiswa().map(s=>s.kelas))].sort();
-  ['selKelasBarcode','selKelasRekap','selKelasRiwayat','selKelasPerbaiki'].forEach(id=>{
+  ['selKelasBarcode','selKelasCariKartu','selKelasRekap','selKelasRiwayat','selKelasPerbaiki'].forEach(id=>{
     const sel = document.getElementById(id);
     if(!sel) return;
     const current = sel.value;
@@ -2232,6 +2247,72 @@ document.getElementById('btnPreviewBarcode').addEventListener('click', ()=>{
   const kelas = document.getElementById('selKelasBarcode').value;
   let list = loadSiswa();
   if(kelas) list = list.filter(s=>s.kelas===kelas);
+  renderPreviewKartu(list);
+});
+
+/* ---- Cetak per nama: antrian lintas kelas, dicetak dalam satu halaman ---- */
+let antrianKartu = [];   // [{nama,kelas}] — bertahan selama halaman terbuka, tidak terhapus saat ganti filter kelas
+const kunciSiswa = s => s.nama + '|' + s.kelas;
+
+function renderHasilCariKartu(){
+  const box = document.getElementById('hasilCariKartu');
+  const kelas = document.getElementById('selKelasCariKartu').value;
+  const q = document.getElementById('inpCariKartu').value.trim().toLowerCase();
+  let list = loadSiswa();
+  if(kelas) list = list.filter(s=>s.kelas===kelas);
+  if(q) list = list.filter(s=>s.nama.toLowerCase().includes(q));
+  if(!kelas && !q){
+    box.innerHTML = '<div class="empty" style="padding:14px;">Pilih kelas atau ketik nama untuk mencari siswa</div>';
+    return;
+  }
+  if(list.length===0){ box.innerHTML = '<div class="empty" style="padding:14px;">Siswa tidak ditemukan</div>'; return; }
+  const dalam = new Set(antrianKartu.map(kunciSiswa));
+  const MAX = 60;
+  const tampil = list.slice().sort((a,b)=>a.nama.localeCompare(b.nama)).slice(0, MAX);
+  box.innerHTML = tampil.map(s=>{
+    const k = kunciSiswa(s), ada = dalam.has(k);
+    return `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px;border-bottom:1px solid #eef1f7;">
+      <span style="font-size:.86rem;"><b>${escHtml(s.nama)}</b> <span style="color:var(--muted);">· ${escHtml(s.kelas)}</span></span>
+      <button class="btn ${ada?'btn-outline':'btn-navy'}" data-k="${escHtml(k)}" style="padding:5px 12px;font-size:.76rem;" ${ada?'disabled':''}>${ada?'✓ Ditambahkan':'+ Tambah'}</button>
+    </div>`;
+  }).join('') + (list.length>MAX ? `<div style="padding:8px 12px;font-size:.75rem;color:var(--muted);">Menampilkan ${MAX} dari ${list.length} siswa — persempit pencarian.</div>` : '');
+}
+function renderAntrianKartu(){
+  document.getElementById('jmlAntrianKartu').textContent = antrianKartu.length;
+  const box = document.getElementById('antrianKartu');
+  if(antrianKartu.length===0){
+    box.innerHTML = '<span style="font-size:.8rem;color:var(--muted);">Belum ada siswa dipilih</span>';
+    return;
+  }
+  box.innerHTML = antrianKartu.map(s=>`<span class="pill" style="background:#e7ecfb;color:var(--navy-3);display:inline-flex;align-items:center;gap:6px;padding:5px 10px;">
+      ${escHtml(s.nama)} · ${escHtml(s.kelas)}
+      <button data-hapus="${escHtml(kunciSiswa(s))}" title="Hapus" style="border:0;background:none;cursor:pointer;color:inherit;font-weight:900;padding:0;">✕</button>
+    </span>`).join('');
+}
+document.getElementById('selKelasCariKartu').addEventListener('change', renderHasilCariKartu);
+document.getElementById('inpCariKartu').addEventListener('input', renderHasilCariKartu);
+document.getElementById('hasilCariKartu').addEventListener('click', e=>{
+  const b = e.target.closest('button[data-k]'); if(!b) return;
+  const s = loadSiswa().find(x=>kunciSiswa(x)===b.dataset.k);
+  if(s && !antrianKartu.some(x=>kunciSiswa(x)===b.dataset.k)) antrianKartu.push({nama:s.nama, kelas:s.kelas});
+  renderHasilCariKartu(); renderAntrianKartu();
+});
+document.getElementById('antrianKartu').addEventListener('click', e=>{
+  const b = e.target.closest('button[data-hapus]'); if(!b) return;
+  antrianKartu = antrianKartu.filter(x=>kunciSiswa(x)!==b.dataset.hapus);
+  renderHasilCariKartu(); renderAntrianKartu();
+});
+document.getElementById('btnKosongkanAntrian').addEventListener('click', ()=>{
+  antrianKartu = []; renderHasilCariKartu(); renderAntrianKartu();
+});
+document.getElementById('btnPreviewAntrian').addEventListener('click', ()=>{
+  if(antrianKartu.length===0){ toast('Daftar cetak masih kosong'); return; }
+  renderPreviewKartu(antrianKartu.slice());
+  document.getElementById('cardBarcodePreview').scrollIntoView({behavior:'smooth', block:'start'});
+});
+renderAntrianKartu(); renderHasilCariKartu();
+
+function renderPreviewKartu(list){
   if(list.length===0){ toast('Tidak ada siswa untuk dicetak'); return; }
   const area = document.getElementById('printArea');
   const backHTML = idcBackHTML();
@@ -2247,7 +2328,7 @@ document.getElementById('btnPreviewBarcode').addEventListener('click', ()=>{
     document.querySelector(`.bc-${i}`).innerHTML = renderQR(`${s.nama}|${s.kelas}`, {cellSize:4, margin:2});
   });
   toast(`${list.length} kartu QR dibuat`);
-});
+}
 document.getElementById('btnDoPrint').addEventListener('click', ()=>{
   document.body.classList.remove('print-rekap'); document.body.classList.add('print-kartu');
   window.print();
